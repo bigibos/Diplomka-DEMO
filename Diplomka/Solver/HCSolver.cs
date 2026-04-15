@@ -11,55 +11,40 @@ namespace Diplomka.Solver
 {
     public class HCSolver
     {
-        public int EvaluateCost(State state)
+        public int AssignmentCost(Slot slot, Referee referee)
+        {
+            // 1. Rozdíl úrovní (např. 0, 1, 2...)
+            int levelDifference = Math.Abs(slot.RequiredRank - referee.Rank);
+
+            // 2. Vzdálenost v km (např. 15.5 km)
+            double distance = referee.Location.DistanceTo(slot.Match.Location);
+
+            // 3. Vážená suma
+            // Příklad: 1 stupeň úrovně navíc je "stejně drahý" jako 50 km cesty.
+            // Tuhle váhu si můžeš upravit podle potřeby.
+            double levelWeight = 100.0;
+            double distanceWeight = 2.0;
+
+            double totalCost = (levelDifference * levelWeight) + (distance * distanceWeight);
+
+            return (int)Math.Round(totalCost);
+        }
+
+
+        public int StateCost(State state)
         {
             int cost = 0;
-            HashSet<string> scheduleLog = new HashSet<string>();
 
-            foreach (var item in state)
+            foreach (var pair in state)
             {
-                Slot slot = item.Key;
-                Referee? referee = item.Value;
-
-                // --- 1. KRITICKÁ PENALIZACE: NEPRIDELENY SLOT ---
-                if (referee == null)
+                if (pair.Value != null)
                 {
-                    cost += 10000; // Zvýšeno, aby algoritmus prioritně zaplnil všechny sloty
-                    continue;
-                }
-
-                // --- 2. KRITICKÁ PENALIZACE: KOLIZE DNE ---
-                string scheduleKey = $"{referee.Id}:{slot.Day}";
-                if (scheduleLog.Contains(scheduleKey))
-                {
-                    cost += 5000;
+                    cost += AssignmentCost(pair.Key, pair.Value);
                 }
                 else
                 {
-                    scheduleLog.Add(scheduleKey);
+                    cost += 10000;
                 }
-
-                // --- 3. PENALIZACE ZA LEVEL ---
-                if (referee.Level < slot.Level)
-                {
-                    // Rozhodčí má nižší level než slot (vážný problém)
-                    cost += (slot.Level - referee.Level) * 200;
-                }
-                else if (referee.Level > slot.Level)
-                {
-                    // Rozhodčí má vyšší level než slot (mírná penalizace, 
-                    // chceme si "lepší" rozhodčí šetřit pro těžší zápasy)
-                    cost += (referee.Level - slot.Level) * 20;
-                }
-
-                // --- 4. PENALIZACE ZA VZDÁLENOST (KLÍČOVÁ ZMĚNA) ---
-                // Vypočítáme vzdálenost v km
-                double distance = referee.Location.DistanceTo(slot.Location);
-
-                // Přidáme vzdálenost k ceně. 
-                // 1 km = 1 jednotka ceny. 
-                // Pokud je vzdálenost 100 km, přičte to 100 k ceně.
-                cost += (int)Math.Round(distance);
             }
 
             return cost;
@@ -104,11 +89,11 @@ namespace Diplomka.Solver
             // Console.WriteLine(currentState.GetSlots().Count);
 
             State bestState = (State)currentState.Clone();
-            int bestCost = EvaluateCost(bestState);
+            int bestCost = StateCost(bestState);
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                int currentCost = EvaluateCost(currentState);
+                int currentCost = StateCost(currentState);
 
                 for (int iteration = 0; iteration < maxIterations; iteration++)
                 {
@@ -120,7 +105,7 @@ namespace Diplomka.Solver
                         
                         ApplyRandomMove(nextState, referees);
 
-                        int nextCost = EvaluateCost(nextState);
+                        int nextCost = StateCost(nextState);
 
                         if (nextCost == 0)
                             return nextState;   

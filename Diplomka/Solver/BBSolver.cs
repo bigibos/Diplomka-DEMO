@@ -9,6 +9,10 @@ namespace Diplomka.Solver
 {
     public class BBSolver
     {
+        public bool IsTimeCollision(Slot slotA, Slot slotB)
+        {
+            return slotA.Match.Start < slotB.Match.End && slotB.Match.Start < slotA.Match.End;
+        }
         /**
          * 
          * Striknti podminky pro přiřazení rozhodčího do slotu
@@ -22,8 +26,7 @@ namespace Diplomka.Solver
                 if (pair.Value == null)
                     continue;
 
-                if (pair.Value.Id == referee.Id &&
-                    pair.Key.Day == slot.Day)
+                if (pair.Value.Id == referee.Id && IsTimeCollision(pair.Key, slot))
                 {
                     return false; // kolize dne
                 }
@@ -37,13 +40,13 @@ namespace Diplomka.Solver
          * Cena přiřazení rozhodčího do slotu
          * 
          */
-        private int AssignmentCost(Slot slot, Referee referee)
+        public int AssignmentCost(Slot slot, Referee referee)
         {
             // 1. Rozdíl úrovní (např. 0, 1, 2...)
-            int levelDifference = Math.Abs(slot.Level - referee.Level);
+            int levelDifference = Math.Abs(slot.RequiredRank - referee.Rank);
 
             // 2. Vzdálenost v km (např. 15.5 km)
-            double distance = referee.Location.DistanceTo(slot.Location);
+            double distance = referee.Location.DistanceTo(slot.Match.Location);
 
             // 3. Vážená suma
             // Příklad: 1 stupeň úrovně navíc je "stejně drahý" jako 50 km cesty.

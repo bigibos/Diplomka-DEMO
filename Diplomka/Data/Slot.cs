@@ -9,18 +9,15 @@ namespace Diplomka.Data
     public class Slot
     {
         public int Id {  get; private set; }
-        public int Level { get; private set; } = 0; 
+        public int RequiredRank { get; private set; } = 0; 
 
-        public int Day { get; private set; } = 0;
+        public Match Match { get; set; }
 
-        public Geo Location { get; private set; }
-
-        public Slot(int id, int level, int day, Geo location)
+        public Slot(int id, int requiredRank, Match match)
         {
             Id = id;
-            Level = level;
-            Day = day;
-            Location = location;
+            RequiredRank = requiredRank;
+            Match = match;
         }
 
         public override string ToString()

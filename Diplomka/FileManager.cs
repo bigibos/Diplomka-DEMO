@@ -13,6 +13,7 @@ namespace Diplomka
 {
     public class FileManager
     {
+        private static string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
         /*
         public static List<Referee> ReadReferees()
         {
@@ -39,7 +40,7 @@ namespace Diplomka
         {
             var referees = new List<Referee>();
 
-            using var reader = new StreamReader("..\\..\\..\\referees.csv");
+            using var reader = new StreamReader($"{rootDirectory}\\referees.csv");
 
             // přeskočíme hlavičku
             reader.ReadLine();
@@ -70,7 +71,7 @@ namespace Diplomka
         {
             var slots = new List<Slot>();
 
-            using var reader = new StreamReader("..\\..\\..\\slots.csv");
+            using var reader = new StreamReader($"{rootDirectory}\\slots.csv");
 
             // hlavička
             reader.ReadLine();
@@ -100,7 +101,7 @@ namespace Diplomka
 
         public static void WriteState(State state, string fileName)
         {
-            using var writer = new StreamWriter($"..\\..\\..\\{fileName}", false, Encoding.UTF8);
+            using var writer = new StreamWriter($"{rootDirectory}\\{fileName}", false, Encoding.UTF8);
 
             // Rozšířená hlavička i o vzdálenost pro kontrolu
             writer.WriteLine("slot;ref;slot level;ref level;day;distance_km");
@@ -119,8 +120,8 @@ namespace Diplomka
                 writer.WriteLine(
                     $"{slot.Id};" +
                     $"{referee?.Name ?? "UNASSIGNED"};" +
-                    $"{slot.Level};" +
-                    $"{referee?.Level.ToString() ?? ""};" +
+                    $"{slot.RequiredRank};" +
+                    $"{referee?.Rank.ToString() ?? ""};" +
                     $"{slot.Day};" +
                     $"{dist:F2}" // Vzdálenost na 2 desetinná místa
                 );

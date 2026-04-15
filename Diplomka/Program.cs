@@ -20,6 +20,22 @@ foreach (var slot in slots)
 {
     initial.AddSlot(slot);
 }
+/*
+var praha = new Geo(50.0878, 14.4205);
+var brno = new Geo(49.1951, 16.6068);
+
+var pardubice = new Geo(50.0375792, 15.7774239);
+var litomysl = new Geo(49.8720311, 16.3105192);
+
+var info = await litomysl.GetRoadRouteToAsync(pardubice);
+
+if (info != null)
+{
+    Console.WriteLine($"Vzdálenost po silnici: {info.DistanceKm:F2} km");
+    Console.WriteLine($"Doba jízdy: {info.DurationMinutes:F0} min");
+}
+*/
+
 
 BBSolver bb = new BBSolver();
 Stopwatch swBB = Stopwatch.StartNew();
@@ -42,10 +58,12 @@ State resultHC = hc.Solve(slots, referees);
 swHC.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
-Console.WriteLine($"Cena: {hc.EvaluateCost(resultHC)}");
+Console.WriteLine($"Cena: {hc.StateCost(resultHC)}");
 Console.WriteLine($"Čas: {swHC.ElapsedMilliseconds} ms");
 Console.WriteLine(resultHC);
 FileManager.WriteState(resultHC, "resultHC.csv");
+
+Console.ReadKey();
 
 
 

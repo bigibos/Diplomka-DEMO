@@ -10,15 +10,15 @@ namespace Diplomka.Data
     {
         public int Id { get; private set; }
         public string Name { get; private set; } = string.Empty;
-        public int Level { get; private set; } = 0;
+        public int Rank { get; private set; } = 0;
 
         public Geo Location { get; private set; }
 
-        public Referee(int id, string name, int level, Geo location)
+        public Referee(int id, string name, int rank, Geo location)
         {
             Id = id; 
             Name = name;
-            Level = level;
+            Rank = rank;
             Location = location;
         }
 
