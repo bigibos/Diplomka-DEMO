@@ -46,19 +46,21 @@ foreach (var slot in slots)
 }
 
 
-/*
 BBSolver bb = new BBSolver();
 Stopwatch swBB = Stopwatch.StartNew();
-Console.WriteLine("Zrpacovavam pres BB...");
-State resultBB = bb.Solve(initial, referees);
-swBB.Stop();
+Console.WriteLine("Zpracovávám přes B&B (Max 60 sekund)...");
 
-Console.WriteLine("Řešení pomocí Branch & Bound:");
-Console.WriteLine($"Cena: {bb.StateCost(resultBB)}");
-Console.WriteLine($"Čas: {swBB.ElapsedMilliseconds} ms");
+// Můžeš si pohrát s parametry:
+// maxSeconds: Kdy se má prohledávání natvrdo utnout
+// maxBranchingFactor: 3-5 je rychlé, 10+ je pomalejší ale přesnější
+State resultBB = bb.Solve(initial, referees, maxSeconds: 4, maxBranchingFactor: 6);
+
+swBB.Stop();
+Console.WriteLine($"Hotovo za: {swBB.ElapsedMilliseconds} ms");
 Console.WriteLine(resultBB);
 
 CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB);
+/*
 */
 
 
