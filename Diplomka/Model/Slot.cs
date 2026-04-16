@@ -19,7 +19,7 @@ namespace Diplomka.Model
         public override string ToString()
         {
             string result = "";
-            result += $"Slot: RequiredRank={RequiredRank}, Location={Location}, Time={Start:yyyy-MM-dd HH:mm} - {End:yyyy-MM-dd HH:mm}";
+            result += $"Slot: {RequiredRank}, {Location}, {Start:yyyy-MM-dd HH:mm} - {End:yyyy-MM-dd HH:mm}";
 
             return result;
         }

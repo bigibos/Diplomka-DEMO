@@ -2,6 +2,7 @@
 using CsvHelper.Configuration;
 using Diplomka.ImportExport.Mapping;
 using Diplomka.Model;
+using Diplomka.Solver;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -21,7 +22,7 @@ namespace Diplomka.ImportExport
 
         public static void SaveSlots(string path, List<Slot> slots)
         {
-            using var writer = new StreamWriter(path);
+            using var writer = new StreamWriter(path, false, new UTF8Encoding(true));
             using var csv = new CsvWriter(writer, csvConfig);
 
             csv.Context.RegisterClassMap<SlotMap>();
@@ -33,7 +34,7 @@ namespace Diplomka.ImportExport
 
         public static void SaveReferees(string path, List<Referee> referees)
         {
-            using var writer = new StreamWriter(path);
+            using var writer = new StreamWriter(path, false, new UTF8Encoding(true));
             using var csv = new CsvWriter(writer, csvConfig);
 
             csv.Context.RegisterClassMap<RefereeMap>();
@@ -41,6 +42,22 @@ namespace Diplomka.ImportExport
             var dtos = referees.Select(CsvMapper.ToDto);
 
             csv.WriteRecords(dtos);
+        }
+
+        public static void SaveState(string path, State state)
+        {
+            var dtos = StateCsvMapper.ToDtoList(state);
+
+            using var writer = new StreamWriter(path, false, new UTF8Encoding(true));
+
+            var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                Delimiter = ";"
+            };
+
+            using var csv = new CsvWriter(writer, config);
+
+            csv.WriteRecords(dtos); // ✔ header se vytvoří automaticky
         }
     }
 }
