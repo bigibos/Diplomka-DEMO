@@ -13,8 +13,7 @@ namespace Diplomka.Files
         private readonly JsonSerializerOptions _options = new()
         {
             WriteIndented = true, // čitelné
-            PropertyNameCaseInsensitive = true,
-            ReferenceHandler = ReferenceHandler.Preserve, // pro cyklické reference
+            PropertyNameCaseInsensitive = true
         };
 
         public void Serialize(Stream stream, T data)

@@ -8,21 +8,20 @@ namespace Diplomka.Model
 {
     public class Slot
     {
-        public int Id {  get; private set; }
-        public int RequiredRank { get; private set; } = 0; 
+        public int Id {  get; set; }
+        public int RequiredRank { get; set; } = 0;
+        public Geo? Location { get; set; }
 
-        public Match Match { get; set; }
+        public DateTime Start { get; set; } = DateTime.MinValue;
+        public DateTime End { get; set; } = DateTime.MinValue;
 
-        public Slot(int id, int requiredRank, Match match)
-        {
-            Id = id;
-            RequiredRank = requiredRank;
-            Match = match;
-        }
 
         public override string ToString()
         {
-            return $"Slot {Id}";
+            string result = "";
+            result += $"Slot: RequiredRank={RequiredRank}, Location={Location}, Time={Start:yyyy-MM-dd HH:mm} - {End:yyyy-MM-dd HH:mm}";
+
+            return result;
         }
     }
 }

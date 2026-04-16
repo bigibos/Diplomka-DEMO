@@ -11,7 +11,7 @@ namespace Diplomka.Solver
     {
         public bool IsTimeCollision(Slot slotA, Slot slotB)
         {
-            return slotA.Match.Start < slotB.Match.End && slotB.Match.Start < slotA.Match.End;
+            return slotA.Start < slotB.End && slotB.Start < slotA.End;
         }
         /**
          * 
@@ -46,7 +46,7 @@ namespace Diplomka.Solver
             int levelDifference = Math.Abs(slot.RequiredRank - referee.Rank);
 
             // 2. Vzdálenost v km (např. 15.5 km)
-            double distance = referee.Location.DistanceTo(slot.Match.Location);
+            double distance = referee.Location.DistanceTo(slot.Location);
 
             // 3. Vážená suma
             // Příklad: 1 stupeň úrovně navíc je "stejně drahý" jako 50 km cesty.

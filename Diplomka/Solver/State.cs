@@ -81,7 +81,7 @@ namespace Diplomka.Solver
                 result += $"{assignment.Key}\t-> ";
                 if (assignment.Value != null)
                 {
-                    result += $"{assignment.Value}\t(Den {assignment.Key.Match.Start.Day})({assignment.Key.RequiredRank}/{assignment.Value.Rank})({Math.Round(assignment.Value.Location.DistanceTo(assignment.Key.Match.Location), 2)} km)\n";
+                    result += $"{assignment.Value}\t(Den {assignment.Key.Start.Day})({assignment.Key.RequiredRank}/{assignment.Value.Rank})({Math.Round(assignment.Value.Location.DistanceTo(assignment.Key.Location), 2)} km)\n";
                 }
                 else
                 {

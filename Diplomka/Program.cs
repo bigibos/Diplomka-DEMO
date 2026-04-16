@@ -3,53 +3,33 @@ using Diplomka.Model;
 using Diplomka.Files;
 using Diplomka.Solver;
 using System.Diagnostics;
+using Diplomka.ImportExport;
 
 
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
-Team team1 = new Team { Name = "Team A" };
-Team team2 = new Team { Name = "Team B" };
 
-List<Team> teams = new List<Team> { team1, team2 }; 
-
-
-List<Match> matches = new List<Match> {
-    new Match
-    {
-        Location = new Geo(50.0878, 14.4205),
-        Home = team1,
-        Away = team2,
-        Start = new DateTime(2024, 6, 1, 15, 0, 0),
-        End = new DateTime(2024, 6, 1, 17, 0, 0)
-    },
-    new Match
-    {
-        Location = new Geo(49.1951, 16.6068),
-        Home = team2,
-        Away = team1,
-        Start = new DateTime(2024, 6, 2, 15, 0, 0),
-        End = new DateTime(2024, 6, 2, 17, 0, 0)
-    }
-};
+List<Slot> slots = new List<Slot>();
+List<Referee> referees = new List<Referee>();
 
 
+slots.Add(new Slot { Id = 1, RequiredRank = 2, Location = new Geo(50.0878, 14.4205), Start = new DateTime(2024, 6, 1, 10, 0, 0), End = new DateTime(2024, 6, 1, 12, 0, 0) });
+slots.Add(new Slot { Id = 2, RequiredRank = 1, Location = new Geo(49.1951, 16.6068), Start = new DateTime(2024, 6, 1, 11, 0, 0), End = new DateTime(2024, 6, 1, 13, 0, 0) });
 
-AppData appData = new AppData
-{
-    Teams = teams,
-    Matches = matches,
-    Referees = new List<Referee>(),
-    Slots = new List<Slot>()
-};
+
 
 var fs = new FileStorage();
 
-// fs.Save($"{rootDirectory}\\data.json", appData, new JsonSerializer<AppData>());
 
-var data = fs.Load($"{rootDirectory}\\data.json", new JsonSerializer<AppData>());
+// CsvExporter.SaveSlots($"{rootDirectory}\\slots.csv", slots);
 
-Console.WriteLine(data);
-data.Teams[0].Name = "Dynamo Pardubice";
-Console.WriteLine(data);
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
+
+foreach (var s in slots)
+{
+    Console.WriteLine(s);   
+}
+
+
 
 /*
 var t = fs.Load($"{rootDirectory}\\teams.json", new JsonSerializer<List<Team>>());
