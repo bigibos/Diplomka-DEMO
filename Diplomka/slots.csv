@@ -1,4 +1,4 @@
-id;level;day;lat;lon
+id;requiredRank;day;lat;lon
 1;5;1;50.0755;14.4378
 2;3;2;49.2002;16.6078
 3;4;2;50.0343;15.7812

@@ -4,15 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Diplomka.Data
+namespace Diplomka.Model
 {
     public class Referee
     {
-        public int Id { get; private set; }
-        public string Name { get; private set; } = string.Empty;
-        public int Rank { get; private set; } = 0;
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int Rank { get; set; } = 0;
 
-        public Geo Location { get; private set; }
+        public Geo Location { get; set; }
 
         public Referee(int id, string name, int rank, Geo location)
         {

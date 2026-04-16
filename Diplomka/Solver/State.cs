@@ -1,4 +1,4 @@
-﻿using Diplomka.Data;
+﻿using Diplomka.Model;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ namespace Diplomka.Solver
     {
         private Dictionary<Slot, Referee?> assignments = new();
 
+
         public List<Slot> GetSlots()
         {
             return assignments.Keys.ToList();
@@ -20,6 +21,14 @@ namespace Diplomka.Solver
         public List<Referee?> GetReferees()
         {
             return assignments.Values.ToList();
+        }
+
+        public List<Slot> GetEmptySlots()
+        {
+            return assignments
+                .Where(p => p.Value == null)
+                .Select(p => p.Key)
+                .ToList();
         }
 
         public void AddSlot(Slot slot)
@@ -35,7 +44,7 @@ namespace Diplomka.Solver
             }
         }
 
-        public void RemoveReferee(Slot slot)
+        public void ClearSlot(Slot slot)
         {
             if (assignments.ContainsKey(slot))
             {
@@ -43,7 +52,7 @@ namespace Diplomka.Solver
             }
         }
 
-        public void AddReferee(Slot slot, Referee? referee)
+        public void SetReferee(Slot slot, Referee? referee)
         {
             if (assignments.ContainsKey(slot))
             {

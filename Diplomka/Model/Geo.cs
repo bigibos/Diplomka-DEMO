@@ -5,32 +5,33 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Diplomka.Data
+namespace Diplomka.Model
 {
     public class Geo
     {
+        public int Id { get; set; }
         public record RouteInfo(double DistanceKm, double DurationMinutes);
 
         // Zeměpisná šířka (např. 50.0878)
-        public double Latitude { get; private set; }
+        public double Lat { get; set; }
 
         // Zeměpisná délka (např. 14.4205)
-        public double Longitude { get; private set; }
+        public double Lon { get; set; }
 
-        public Geo(double latitude, double longitude)
+        public Geo(double lat, double lon)
         {
-            Latitude = latitude;
-            Longitude = longitude;
+            Lat = lat;
+            Lon = lon;
         }
         public double DistanceTo(Geo other)
         {
             double r = 6371; // Poloměr Země v km
             
-            double dLat = Double.DegreesToRadians(other.Latitude - this.Latitude);
-            double dLon = Double.DegreesToRadians(other.Longitude - this.Longitude);
+            double dLat = Double.DegreesToRadians(other.Lat - this.Lat);
+            double dLon = Double.DegreesToRadians(other.Lon - this.Lon);
 
             double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                       Math.Cos(Double.DegreesToRadians(this.Latitude)) * Math.Cos(Double.DegreesToRadians(other.Latitude)) *
+                       Math.Cos(Double.DegreesToRadians(this.Lat)) * Math.Cos(Double.DegreesToRadians(other.Lat)) *
                        Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
 
             double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
@@ -44,8 +45,8 @@ namespace Diplomka.Data
             // OSRM API vyžaduje formát: longitude,latitude;longitude,latitude
             // Pozor: OSRM má prohozené pořadí oproti běžnému Lat,Lon!
             string url = $"http://router.project-osrm.org/route/v1/driving/" +
-                         $"{this.Longitude.ToString().Replace(',', '.')},{this.Latitude.ToString().Replace(',', '.')};" +
-                         $"{other.Longitude.ToString().Replace(',', '.')},{other.Latitude.ToString().Replace(',', '.')}" +
+                         $"{this.Lon.ToString().Replace(',', '.')},{this.Lat.ToString().Replace(',', '.')};" +
+                         $"{other.Lon.ToString().Replace(',', '.')},{other.Lat.ToString().Replace(',', '.')}" +
                          $"?overview=false";
 
             try
@@ -77,7 +78,7 @@ namespace Diplomka.Data
 
         public override string ToString()
         {
-            return $"{Latitude}, {Longitude}";
+            return $"{Lat}, {Lon}";
         }
     }
 }

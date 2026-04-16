@@ -1,0 +1,27 @@
+{
+  "id": 1,
+  "location": {
+    "lat": 49.83,
+    "lon": 18.29
+  },
+  "start": "2026-04-15T10:00:00",
+  "end": "2026-04-15T12:00:00",
+  "home": {
+    "id": 1,
+    "name": "Team A"
+  },
+  "away": {
+    "id": 2,
+    "name": "Team B"
+  },
+  "slots": [
+    {
+      "id": 10,
+      "refereeId": 5
+    },
+    {
+      "id": 11,
+      "refereeId": 6
+    }
+  ]
+}

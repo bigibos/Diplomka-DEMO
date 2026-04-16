@@ -1,4 +1,4 @@
-﻿using Diplomka.Data;
+﻿using Diplomka.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -80,19 +80,13 @@ namespace Diplomka.Solver
             return cost;
         }
 
-        List<Slot> UnassignedSlots(State state)
-        {
-            return state
-                .Where(p => p.Value == null)
-                .Select(p => p.Key)
-                .ToList();
-        }
+
 
         private int LowerBound(State state, List<Referee> referees)
         {
             int bound = StateCost(state);
 
-            foreach (var slot in UnassignedSlots(state))
+            foreach (var slot in state.GetEmptySlots())
             {
                 int min = int.MaxValue;
 
@@ -110,12 +104,12 @@ namespace Diplomka.Solver
         private State? bestState = null;
         private int bestCost = int.MaxValue;
 
-        public State? BranchAndBound(State state, List<Referee> referees)
+        public State Solve(State state, List<Referee> referees)
         {
             int currentCost = StateCost(state);
 
             // všechny sloty přiřazené
-            if (UnassignedSlots(state).Count == 0)
+            if (state.GetEmptySlots().Count == 0)
             {
                 if (currentCost < bestCost)
                 {
@@ -130,7 +124,7 @@ namespace Diplomka.Solver
                 return bestState;
 
             // vybereme další slot (zatím první – lze zlepšit heuristikou)
-            Slot slot = UnassignedSlots(state).First();
+            Slot slot = state.GetEmptySlots().First();
 
             foreach (var referee in referees)
             {
@@ -138,9 +132,9 @@ namespace Diplomka.Solver
                     continue;
 
                 State next = (State)state.Clone();
-                next.AddReferee(slot, referee);
+                next.SetReferee(slot, referee);
 
-                BranchAndBound(next, referees);
+                Solve(next, referees);
             }
 
             return bestState;

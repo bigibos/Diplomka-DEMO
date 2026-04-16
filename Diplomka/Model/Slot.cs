@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Diplomka.Data
+namespace Diplomka.Model
 {
     public class Slot
     {

@@ -1,4 +1,4 @@
-﻿using Diplomka.Data;
+﻿using Diplomka.Model;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -58,7 +58,7 @@ namespace Diplomka.Solver
             foreach (var slot in slots)
             {
                 state.AddSlot(slot);
-                state.AddReferee(slot, referees[random.Next(referees.Count)]);
+                state.SetReferee(slot, referees[random.Next(referees.Count)]);
             }
 
             return state;
@@ -74,7 +74,7 @@ namespace Diplomka.Solver
             var randomSlot = slots[random.Next(slots.Count)];
             var randomReferee = referees[random.Next(referees.Count)];
 
-            state.AddReferee(randomSlot, randomReferee);
+            state.SetReferee(randomSlot, randomReferee);
 
         }
 

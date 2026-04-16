@@ -1,0 +1,13 @@
+{
+  "$id": "1",
+  "$values": [
+    {
+      "$id": "2",
+      "Name": "Sparta Praha"
+    },
+    {
+      "$id": "3",
+      "Name": "Dynamo Pardubice"
+    }
+  ]
+}
