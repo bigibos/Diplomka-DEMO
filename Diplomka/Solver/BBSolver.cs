@@ -11,52 +11,50 @@ namespace Diplomka.Solver
         private State? _bestState;
         private int _bestCost;
 
-        // --- Předpočítané struktury pro maximální rychlost ---
+        // Struktury por rychlejsi pristupy a predvypocty
         private int _numSlots;
         private int _numReferees;
         private int[,] _costMatrix = null!;
         private bool[,] _conflictMatrix = null!;
         private List<int>[] _refereeAssignments = null!;
 
-        // --- Proměnné pro limitování času a šířky prohledávání ---
+        // Pro mereni casu a ochranu proti zamrznuti
         private Stopwatch _timer = new Stopwatch();
         private long _timeLimitMs;
         private bool _timeOutReached;
         private int _maxBranchingFactor;
 
-        // ---------------------------------------------------------
-        // 1. INICIALIZACE A PŘEDVÝPOČTY
-        // ---------------------------------------------------------
+
+        // Inicializace datových struktur pro rychle pristupy
         private void InitializeData(List<Slot> allSlots, List<Referee> referees)
         {
+            // Pocty slotu a reozhodců pro snadnější práci s maticemi
             _numSlots = allSlots.Count;
             _numReferees = referees.Count;
 
+            // Matice cen a konfliktu
             _costMatrix = new int[_numSlots, _numReferees];
             _conflictMatrix = new bool[_numSlots, _numSlots];
 
+            // Pro sledovani aktualniho prirazeni pro rychlejsi kontrolu konfliktu
             _refereeAssignments = new List<int>[_numReferees];
             for (int i = 0; i < _numReferees; i++)
-            {
                 _refereeAssignments[i] = new List<int>(_numSlots);
-            }
 
-            // Předvýpočet cen a časových konfliktů
+            // Predvypocet cen a konfliktu mezi sloty pro rychlejsi pristupy v B&B
             for (int i = 0; i < _numSlots; i++)
             {
                 for (int j = 0; j < _numReferees; j++)
-                {
                     _costMatrix[i, j] = AssignmentCost(allSlots[i], referees[j]);
-                }
 
+                // True, pokud se sloty časově překrývají (kolize)
+                // TODO: Mozna pridat konfilkty kdy ma slot uz rozhodciho prirazeneho
                 for (int k = 0; k < _numSlots; k++)
-                {
-                    // True, pokud se sloty časově překrývají (kolize)
                     _conflictMatrix[i, k] = (allSlots[i].Start < allSlots[k].End && allSlots[k].Start < allSlots[i].End);
-                }
             }
         }
 
+        // Vypocet ceny prirazeni rozhodciho k slotu
         public int AssignmentCost(Slot slot, Referee referee)
         {
             int levelDifference = Math.Abs(slot.RequiredRank - referee.Rank);
@@ -82,12 +80,14 @@ namespace Diplomka.Solver
             _bestState = null;
 
             // Získáme úvodní horní mez pomocí Greedy algoritmu
+            /*
             var greedy = GreedySolve(initialState, referees, allSlots);
             if (greedy != null)
             {
                 _bestState = greedy;
                 _bestCost = CalculateTotalCost(greedy);
             }
+            */
 
             // Pole pro sledování aktuálního přiřazení (index rozhodčího nebo -1)
             var currentAssignments = new int[_numSlots];
@@ -95,7 +95,6 @@ namespace Diplomka.Solver
 
             // Pole indexů slotů, které budeme in-place přehazovat (Swap)
             var slotIndices = Enumerable.Range(0, _numSlots).ToArray();
-
             // Spuštění stopek a samotného B&B algoritmu
             _timer.Restart();
             DFS(slotIndices, 0, 0, currentAssignments, referees, allSlots);
@@ -112,7 +111,7 @@ namespace Diplomka.Solver
         // ---------------------------------------------------------
         // 3. GREEDY ALGORITMUS
         // ---------------------------------------------------------
-        private State? GreedySolve(State initialState, List<Referee> referees, List<Slot> allSlots)
+        public State? GreedySolve(State initialState, List<Referee> referees, List<Slot> allSlots)
         {
             var state = (State)initialState.Clone();
 
@@ -160,12 +159,10 @@ namespace Diplomka.Solver
             return state;
         }
 
-        // ---------------------------------------------------------
-        // 4. BRANCH & BOUND - DFS (Backtracking in-place)
-        // ---------------------------------------------------------
+        // Hlavní rekurzivní metoda pro B&B s MRV, Pruning, Bounding a Beam Search
         private void DFS(int[] slotIndices, int currentIdx, int currentCost, int[] assignments, List<Referee> referees, List<Slot> allSlots)
         {
-            // OCHRANA PROTI ZAMRZNUTÍ: Kontrola času
+            // Ochrana proti zamrznuti - kontrola casu
             if (_timeOutReached) return;
             // Abychom nebrzdili výkon, kontrolujeme čas jen občas, ale pro jistotu v každém uzlu:
             if (_timer.ElapsedMilliseconds > _timeLimitMs)
@@ -174,14 +171,14 @@ namespace Diplomka.Solver
                 return;
             }
 
-            // Pruning: Pokud je aktuální cena horší nebo stejná jako nejlepší nalezená
+            // Pruning - pokud aktualni cena neni lepsi nez nejlepsi nalezena, nemusime pokracovat
             if (currentCost >= _bestCost) return;
 
-            // Bounding: Vypočítáme teoretické minimum pro zbytek slotů
+            // Bounding - vypocet dolni meze pro aktualni vetveni, pokud je horsi nez nejlepsi nalezena, nemusime pokracovat
             int bound = LowerBound(slotIndices, currentIdx, currentCost);
             if (bound >= _bestCost) return;
 
-            // Base case: Všechny sloty byly úspěšně přiřazeny
+            // Base case - pokud jsme priradili vsechny sloty, muzeme zkontrolovat a ulozit reseni
             if (currentIdx == _numSlots)
             {
                 _bestCost = currentCost;
@@ -189,7 +186,7 @@ namespace Diplomka.Solver
                 return;
             }
 
-            // MRV (Minimum Remaining Values): Vybereme nejpřísněji omezený slot
+            // Vyuziti MRV pro ziskani dalsiho slotu
             int bestSlotPos = SelectNextSlot(slotIndices, currentIdx);
 
             // Přehodíme vybraný slot na aktuální pozici v poli
@@ -223,9 +220,8 @@ namespace Diplomka.Solver
             }
         }
 
-        // ---------------------------------------------------------
-        // 5. POMOCNÉ FUNKCE PRO B&B
-        // ---------------------------------------------------------
+
+        // Kontrola moznosti prirazeni rozhodciho k slotu bez konfliktu
         private bool IsFeasible(int refIdx, int slotIdx)
         {
             var assigned = _refereeAssignments[refIdx];
@@ -237,6 +233,7 @@ namespace Diplomka.Solver
             return true;
         }
 
+        // Vypocet dolni meze pro aktualni vetveni
         private int LowerBound(int[] slotIndices, int startIdx, int currentCost)
         {
             int bound = currentCost;
@@ -258,6 +255,38 @@ namespace Diplomka.Solver
             return bound;
         }
 
+        private int LowerBoundStrict(int[] slotIndices, int startIdx, int currentCost)
+        {
+            int bound = currentCost;
+
+            for (int i = startIdx; i < _numSlots; i++)
+            {
+                int sIdx = slotIndices[i];
+                int minCostForSlot = int.MaxValue;
+
+                for (int r = 0; r < _numReferees; r++)
+                {
+                    // ZLEPŠENÍ: Pokud je rozhodčí v TÉTO větvi stromu už obsazený, 
+                    // vůbec ho do výpočtu teoretického minima nezahrnujeme.
+                    if (!IsFeasible(r, sIdx)) continue;
+
+                    if (_costMatrix[sIdx, r] < minCostForSlot)
+                    {
+                        minCostForSlot = _costMatrix[sIdx, r];
+                    }
+                }
+
+                // ZLEPŠENÍ 2: Pokud pro slot nezbyl ŽÁDNÝ volný rozhodčí, 
+                // víme okamžitě, že celá tato větev je slepá ulička. Uřízneme ji (Fail-fast).
+                if (minCostForSlot == int.MaxValue) return int.MaxValue;
+
+                bound += minCostForSlot;
+                if (bound >= _bestCost) return bound; // Early exit
+            }
+            return bound;
+        }
+
+        // MRV heuristika pro výběr dalšího slotu: Vybereme slot s nejmenším počtem možných rozhodčích (nejvíce omezený)
         private int SelectNextSlot(int[] slotIndices, int startIdx)
         {
             int bestPos = startIdx;
@@ -284,6 +313,7 @@ namespace Diplomka.Solver
             return bestPos;
         }
 
+        // Seznam kandidatu serazenych podle ceny pro dany slot
         private List<(int Cost, int RefIdx)> GetSortedCandidates(int slotIdx)
         {
             var list = new List<(int Cost, int RefIdx)>(_numReferees);
@@ -314,6 +344,7 @@ namespace Diplomka.Solver
             {
                 if (assignments[i] != -1)
                 {
+                    state.AddSlot(allSlots[i]); // EDIT: Pridano
                     state.SetReferee(allSlots[i], referees[assignments[i]]);
                 }
             }

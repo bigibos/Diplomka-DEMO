@@ -48,32 +48,35 @@ foreach (var slot in slots)
 
 BBSolver bb = new BBSolver();
 Stopwatch swBB = Stopwatch.StartNew();
-Console.WriteLine("Zpracovávám přes B&B (Max 60 sekund)...");
+int maxBranchingFactor = int.MaxValue;
+int maxSeconds = 1200;
+Console.WriteLine($"Zpracovávám přes B&B (Max {maxSeconds} sekund)...");
 
 // Můžeš si pohrát s parametry:
 // maxSeconds: Kdy se má prohledávání natvrdo utnout
 // maxBranchingFactor: 3-5 je rychlé, 10+ je pomalejší ale přesnější
-State resultBB = bb.Solve(initial, referees, maxSeconds: 4, maxBranchingFactor: 6);
+State resultBB = bb.Solve(initial, referees, maxSeconds: maxSeconds, maxBranchingFactor: maxBranchingFactor);
 
 swBB.Stop();
+Console.WriteLine("Řešení pomocí Branch and Bound:");
+Console.WriteLine($"Cena: {bb.StateCost(resultBB)}");
 Console.WriteLine($"Hotovo za: {swBB.ElapsedMilliseconds} ms");
-Console.WriteLine(resultBB);
+// Console.WriteLine(resultBB);
 
 CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB);
-/*
-*/
+
 
 
 HCSolver hc = new HCSolver();
 Stopwatch swHC = Stopwatch.StartNew();
-Console.WriteLine("Zrpacovavam pres HC...");
+Console.WriteLine("Zpracovávám přes Hill Climbing...");
 State resultHC = hc.Solve(slots, referees);
 swHC.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
 Console.WriteLine($"Cena: {hc.StateCost(resultHC)}");
-Console.WriteLine($"Čas: {swHC.ElapsedMilliseconds} ms");
-Console.WriteLine(resultHC);
+Console.WriteLine($"Hotovo za: {swHC.ElapsedMilliseconds} ms");
+// Console.WriteLine(resultHC);
 
 
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
