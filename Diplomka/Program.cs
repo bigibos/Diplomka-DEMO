@@ -20,51 +20,23 @@ var fs = new FileStorage();
 slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
 referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
 
-foreach (var slot in slots)
-{
-    Console.WriteLine(slot);   
-}
+Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
-foreach (var referee in referees)
-{
-    Console.WriteLine(referee);
-}
+var solver = new BranchAndBoundSolver(
+    referees,
+    timeLimit: TimeSpan.FromSeconds(60)   // zvyš pro lepší optimum, sniž pro rychlost
+);
 
+State result = solver.Solve(slots);
 
-State state = new State();
-
-foreach (var slot in slots)
-    state.AddSlot(slot);
-
-Random r = new Random();
+Console.WriteLine();
+Console.WriteLine(result.ToString());
+Console.WriteLine($"Celková cena:       {CostCalculator.TotalCost(result):F2}");
+Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().Count}");
+Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 
 
-State initial = new State();
-foreach (var slot in slots)
-{
-    initial.AddSlot(slot);
-}
-
-
-BBSolver bb = new BBSolver();
-Stopwatch swBB = Stopwatch.StartNew();
-int maxBranchingFactor = int.MaxValue;
-int maxSeconds = 1200;
-Console.WriteLine($"Zpracovávám přes B&B (Max {maxSeconds} sekund)...");
-
-// Můžeš si pohrát s parametry:
-// maxSeconds: Kdy se má prohledávání natvrdo utnout
-// maxBranchingFactor: 3-5 je rychlé, 10+ je pomalejší ale přesnější
-State resultBB = bb.Solve(initial, referees, maxSeconds: maxSeconds, maxBranchingFactor: maxBranchingFactor);
-
-swBB.Stop();
-Console.WriteLine("Řešení pomocí Branch and Bound:");
-Console.WriteLine($"Cena: {bb.StateCost(resultBB)}");
-Console.WriteLine($"Hotovo za: {swBB.ElapsedMilliseconds} ms");
-// Console.WriteLine(resultBB);
-
-CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB);
-
+CsvExporter.SaveState($"{rootDirectory}\\result.csv", result);
 
 
 HCSolver hc = new HCSolver();
@@ -74,12 +46,12 @@ State resultHC = hc.Solve(slots, referees);
 swHC.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
-Console.WriteLine($"Cena: {hc.StateCost(resultHC)}");
+Console.WriteLine($"Cena: {CostCalculator.TotalCost(resultHC)}");
 Console.WriteLine($"Hotovo za: {swHC.ElapsedMilliseconds} ms");
 // Console.WriteLine(resultHC);
 
-
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
+
 
 
 Console.WriteLine("Hotovo, stiskněte Enter pro ukončení.");

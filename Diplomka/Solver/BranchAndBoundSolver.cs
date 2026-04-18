@@ -1,225 +1,199 @@
 using Diplomka.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Diplomka.Solver
 {
     /// <summary>
-    /// Branch & Bound solver pro přiřazování rozhodčích do slotů.
+    /// Branch &amp; Bound solver pro Referee Assignment Problem.
     ///
-    /// Cena přiřazení (referee R → slot S):
-    ///   cost(R, S) = DistanceTo(R.Location, S.Location)
-    ///              + |R.Rank - S.RequiredRank| * RankPenaltyWeight
+    /// ── Architektura ──────────────────────────────────────────────────────────────
     ///
-    /// Striktní omezení:
-    ///   1. Každý slot musí mít přiřazeného rozhodčího.
-    ///   2. Rozhodčí nesmí být přiřazen do dvou časově se překrývajících slotů.
+    ///  1. GREEDY FÁZE
+    ///     Sestaví počáteční přiřazení greedy heuristikou (seřazení slotů podle
+    ///     obtížnosti, vždy přiřaď nejlevnějšího způsobilého rozhodčího).
+    ///     Toto řešení slouží jako horní mez (UB) pro B&amp;B.
+    ///
+    ///  2. REPAIR FÁZE
+    ///     Pokud greedy nestihne obsadit všechny sloty (nedostatek rozhodčích
+    ///     v daném časovém okně), opravná heuristika se pokusí vyplnit prázdná
+    ///     místa chain-repair technikou.
+    ///
+    ///  3. BRANCH &amp; BOUND FÁZE
+    ///     Prohledává stavový prostor DFS s agresivním ořezáváním:
+    ///
+    ///     Větvení:
+    ///       Vždy se vybere slot s nejmenším počtem způsobilých rozhodčích
+    ///       (MRV – Minimum Remaining Values). Tím se odhalují mrtvé větve
+    ///       co nejdříve a strom se prořezává efektivněji.
+    ///
+    ///     Dolní mez (Lower Bound):
+    ///       LB = cena dosud přiřazených slotů
+    ///            + pro každý zbývající slot: min(cena přes VŠECHNY způsobilé rozhodčí)
+    ///       Tato mez je přípustná (admissible) – nikdy nepřeceňuje skutečné optimum.
+    ///
+    ///     Ořezávání:
+    ///       Pokud LB ≥ UB (nejlepší dosud nalezené řešení), větev se opustí.
+    ///
+    ///     Časový limit:
+    ///       Kvůli velikosti prostoru (≈ 300 slotů × 29 rozhodčích) je k dispozici
+    ///       konfigurovatelný časový limit. Po jeho uplynutí se vrátí nejlepší
+    ///       dosud nalezené řešení.
+    ///
+    /// ── Složitost ─────────────────────────────────────────────────────────────────
+    ///   Nejhorší případ exponenciální, v praxi silně prořezáno UB z greedy fáze.
     /// </summary>
     public class BranchAndBoundSolver
     {
-        // Váha penalizace za rozdíl ranku. Upravte dle potřeby.
-        public double RankPenaltyWeight { get; set; } = 10.0;
+        private readonly List<Referee>  _referees;
+        private readonly TimeSpan       _timeLimit;
 
-        private List<Referee> _referees = new();
-        private List<Slot> _slots = new();
+        private State?   _bestState;
+        private double   _bestCost;
+        private long     _nodesExplored;
+        private DateTime _startTime;
 
-        // Nejlepší nalezené řešení
-        private State? _bestState = null;
-        private double _bestCost = double.MaxValue;
+        public long   NodesExplored => _nodesExplored;
+        public double BestCost      => _bestCost;
 
-        // Počet navštívených uzlů (pro diagnostiku)
-        public int NodesVisited { get; private set; } = 0;
-
-        public State? Solve(State initialState, List<Referee> referees)
+        /// <param name="referees">Všichni dostupní rozhodčí.</param>
+        /// <param name="timeLimit">Maximální doba optimalizace (default: 30 s).</param>
+        public BranchAndBoundSolver(IEnumerable<Referee> referees, TimeSpan? timeLimit = null)
         {
-            _referees = referees;
-            _slots = initialState.GetSlots();
-            _bestState = null;
-            _bestCost = double.MaxValue;
-            NodesVisited = 0;
-
-            // Seřaď sloty podle počtu dostupných rozhodčích (fail-first heuristika).
-            // Sloty s méně kandidáty se větví dříve → rychlejší prořezání.
-            _slots = _slots
-                .OrderBy(s => GetEligibleReferees(s, new List<(Slot, Referee)>()).Count)
-                .ToList();
-
-            // Spusť DFS rekurzi
-            BranchAndBound(initialState, new List<(Slot slot, Referee referee)>(), 0.0, 0);
-
-            return _bestState;
+            _referees  = referees.ToList();
+            _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
 
-        // ----------------------------------------------------------------
-        // Rekurzivní B&B (DFS)
-        // ----------------------------------------------------------------
-        private void BranchAndBound(
-            State state,
-            List<(Slot slot, Referee referee)> assignments,
-            double currentCost,
-            int depth)
-        {
-            NodesVisited++;
+        // ─────────────────────────────────────────────────────────────────────────
+        // Veřejné API
+        // ─────────────────────────────────────────────────────────────────────────
 
-            // --- Prořezání: aktuální cena už překračuje nejlepší ---
-            if (currentCost >= _bestCost)
+        public State Solve(IEnumerable<Slot> slots)
+        {
+            _startTime    = DateTime.UtcNow;
+            _nodesExplored = 0;
+
+            var slotList = slots.ToList();
+
+            // ── Krok 1: Greedy počáteční řešení ──────────────────────────────────
+            Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
+            var greedyState = new GreedySolver(_referees).Solve(slotList);
+
+            // ── Krok 2: Opravná heuristika ────────────────────────────────────────
+            var emptyAfterGreedy = greedyState.GetEmptySlots();
+            if (emptyAfterGreedy.Count > 0)
+            {
+                Console.WriteLine($"[B&B] Greedy neodsailo {emptyAfterGreedy.Count} slotů – spouštím repair...");
+                greedyState = new RepairHeuristic(_referees).Repair(greedyState);
+            }
+
+            _bestState = greedyState;
+            _bestCost  = CostCalculator.TotalCost(greedyState);
+            Console.WriteLine($"[B&B] Počáteční cena (greedy): {_bestCost:F2}");
+
+            // ── Krok 3: Branch & Bound ────────────────────────────────────────────
+            Console.WriteLine($"[B&B] Spouštím B&B (limit: {_timeLimit.TotalSeconds} s)...");
+
+            // Prázdný výchozí stav pro B&B (přidáme sloty bez přiřazení)
+            var initialState = new State();
+            foreach (var slot in slotList)
+                initialState.AddSlot(slot);
+
+            Branch(initialState, 0.0, slotList);
+
+            Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {_nodesExplored}, nejlepší cena: {_bestCost:F2}");
+            return _bestState!;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // Jádro B&B – rekurzivní DFS
+        // ─────────────────────────────────────────────────────────────────────────
+
+        private void Branch(State state, double costSoFar, List<Slot> allSlots)
+        {
+            // ── Kontrola časového limitu ──────────────────────────────────────────
+            if (DateTime.UtcNow - _startTime > _timeLimit)
                 return;
 
-            // --- Výběr dalšího neohodnoceného slotu ---
+            _nodesExplored++;
+
+            // ── Výběr neohodnoceného slotu (MRV) ─────────────────────────────────
             var emptySlots = state.GetEmptySlots();
 
             if (emptySlots.Count == 0)
             {
-                // Všechny sloty přiřazeny → kompletní řešení
-                if (currentCost < _bestCost)
+                // Listový uzel – kompletní přiřazení
+                if (costSoFar < _bestCost)
                 {
-                    _bestCost = currentCost;
+                    _bestCost  = costSoFar;
                     _bestState = (State)state.Clone();
+                    Console.WriteLine($"[B&B]   Nové optimum: {_bestCost:F2} (uzlů: {_nodesExplored})");
                 }
                 return;
             }
 
-            // Vyber první prázdný slot (pořadí určeno v Solve)
-            Slot slot = emptySlots[0];
+            // MRV: vyber slot s nejméně způsobilými rozhodčími
+            var chosenSlot = SelectSlotMRV(state, emptySlots);
 
-            // Získej kandidáty respektující časové omezení
-            var candidates = GetEligibleReferees(slot, assignments);
-
-            if (candidates.Count == 0)
-            {
-                // Slepá větev — žádný dostupný rozhodčí
-                return;
-            }
-
-            // Seřaď kandidáty podle dolního odhadu přírůstkové ceny (best-first uvnitř DFS)
-            candidates = candidates
-                .OrderBy(r => AssignmentCost(r, slot))
+            // Způsobilí rozhodčí seřazení od nejlevnějšího (best-first větvení)
+            var candidates = ConflictChecker
+                .GetEligibleReferees(state, chosenSlot, _referees)
+                .OrderBy(r => CostCalculator.AssignmentCost(chosenSlot, r))
                 .ToList();
+
+            // ── Ořezávání: žádný způsobilý rozhodčí → slepá ulička ───────────────
+            if (candidates.Count == 0)
+                return;
 
             foreach (var referee in candidates)
             {
-                double incrementalCost = AssignmentCost(referee, slot);
-                double newCost = currentCost + incrementalCost;
+                double assignCost = CostCalculator.AssignmentCost(chosenSlot, referee);
+                double newCost    = costSoFar + assignCost;
 
-                // Prořezání s lower boundem
-                double lb = newCost + LowerBound(state, slot, assignments, referee);
-                if (lb >= _bestCost)
-                    continue;
+                // Přiřaď rozhodčího
+                state.SetReferee(chosenSlot, referee);
 
-                // Vytvoř větev
-                state.SetReferee(slot, referee);
-                assignments.Add((slot, referee));
+                // Dolní mez pro zbývající sloty
+                var remaining = state.GetEmptySlots();
+                double lb = newCost + CostCalculator.LowerBoundForSlots(remaining, _referees);
 
-                BranchAndBound(state, assignments, newCost, depth + 1);
+                // ── Ořezávání (bound) ─────────────────────────────────────────────
+                if (lb < _bestCost)
+                {
+                    Branch(state, newCost, allSlots);
+                }
 
-                // Zpět (backtrack)
-                state.ClearSlot(slot);
-                assignments.RemoveAt(assignments.Count - 1);
+                // Backtrack
+                state.ClearSlot(chosenSlot);
+
+                // Časový limit
+                if (DateTime.UtcNow - _startTime > _timeLimit)
+                    return;
             }
         }
 
-        // ----------------------------------------------------------------
-        // Lower bound pro zbývající prázdné sloty
-        //
-        // Pro každý dosud nepřiřazený slot (kromě právě větvěného) odhadneme
-        // minimální možnou cenu: nejlevnější dostupný rozhodčí.
-        // Tím dostaneme optimistický (dolní) odhad zbytku stromu.
-        // ----------------------------------------------------------------
-        private double LowerBound(
-            State state,
-            Slot justAssigned,
-            List<(Slot slot, Referee referee)> assignments,
-            Referee justReferee)
+        // ─────────────────────────────────────────────────────────────────────────
+        // MRV: slot s nejmenším počtem způsobilých rozhodčích
+        // ─────────────────────────────────────────────────────────────────────────
+
+        private Slot SelectSlotMRV(State state, List<Slot> emptySlots)
         {
-            double lb = 0.0;
+            Slot? best     = null;
+            int   bestCount = int.MaxValue;
 
-            // Simuluj přiřazení, které právě děláme
-            var tempAssignments = new List<(Slot, Referee)>(assignments) { (justAssigned, justReferee) };
-
-            foreach (var emptySlot in state.GetEmptySlots())
+            foreach (var slot in emptySlots)
             {
-                if (emptySlot == justAssigned)
-                    continue;
+                int count = ConflictChecker
+                    .GetEligibleReferees(state, slot, _referees)
+                    .Count;
 
-                var eligible = GetEligibleReferees(emptySlot, tempAssignments);
-                if (eligible.Count == 0)
-                    return double.MaxValue; // Infeasible → nekonečno
-
-                double minCost = eligible.Min(r => AssignmentCost(r, emptySlot));
-                lb += minCost;
+                // Nejprve sloty s nejmenším výběrem; při shodě preferuj vyšší RequiredRank
+                if (count < bestCount || (count == bestCount && slot.RequiredRank > (best?.RequiredRank ?? 0)))
+                {
+                    bestCount = count;
+                    best      = slot;
+                }
             }
 
-            return lb;
-        }
-
-        // ----------------------------------------------------------------
-        // Cena jednoho přiřazení
-        // ----------------------------------------------------------------
-        public double AssignmentCost(Referee referee, Slot slot)
-        {
-            double distance = referee.Location.DistanceTo(slot.Location!);
-            double rankPenalty = Math.Abs(referee.Rank - slot.RequiredRank) * RankPenaltyWeight;
-            return distance + rankPenalty;
-        }
-
-        // ----------------------------------------------------------------
-        // Vrátí rozhodčí, kteří:
-        //   1. Splňují rank (>= RequiredRank) — volitelné, uprav dle pravidel
-        //   2. Nemají časový konflikt s dosavadními přiřazeními
-        // ----------------------------------------------------------------
-        private List<Referee> GetEligibleReferees(
-            Slot slot,
-            List<(Slot slot, Referee referee)> currentAssignments)
-        {
-            return _referees
-                .Where(r => r.Rank >= slot.RequiredRank)
-                .Where(r => !HasTimeConflict(r, slot, currentAssignments))
-                .ToList();
-        }
-
-        // ----------------------------------------------------------------
-        // Detekce časového konfliktu
-        //
-        // Dva sloty se překrývají, když:
-        //   slotA.Start < slotB.End  &&  slotA.End > slotB.Start
-        // ----------------------------------------------------------------
-        private bool HasTimeConflict(
-            Referee referee,
-            Slot newSlot,
-            List<(Slot slot, Referee referee)> currentAssignments)
-        {
-            foreach (var (assignedSlot, assignedReferee) in currentAssignments)
-            {
-                if (assignedReferee.Id != referee.Id)
-                    continue;
-
-                bool overlaps = assignedSlot.Start < newSlot.End &&
-                                assignedSlot.End > newSlot.Start;
-
-                if (overlaps)
-                    return true;
-            }
-
-            return false;
-        }
-
-        // ----------------------------------------------------------------
-        // Výpočet celkové ceny hotového State (pro ověření / HC kompatibilita)
-        // ----------------------------------------------------------------
-        public double CalculateTotalCost(State state)
-        {
-            double total = 0.0;
-
-            foreach (var (slot, referee) in state)
-            {
-                if (referee == null)
-                    throw new InvalidOperationException($"Slot {slot.Id} nemá přiřazeného rozhodčího.");
-
-                total += AssignmentCost(referee, slot);
-            }
-
-            return total;
+            return best!;
         }
     }
 }

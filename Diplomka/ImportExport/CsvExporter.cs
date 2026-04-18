@@ -14,7 +14,7 @@ namespace Diplomka.ImportExport
 {
     public static class CsvExporter
     {
-        static CsvConfiguration csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+        static CsvConfiguration csvConfig = new CsvConfiguration(new CultureInfo("cs-CZ"))
         {
             HasHeaderRecord = true,
             Delimiter = ";"

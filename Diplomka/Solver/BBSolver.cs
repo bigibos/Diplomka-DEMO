@@ -45,7 +45,7 @@ namespace Diplomka.Solver
             for (int i = 0; i < _numSlots; i++)
             {
                 for (int j = 0; j < _numReferees; j++)
-                    _costMatrix[i, j] = AssignmentCost(allSlots[i], referees[j]);
+                    _costMatrix[i, j] = (int)CostCalculator.AssignmentCost(allSlots[i], referees[j]);
 
                 // True, pokud se sloty časově překrývají (kolize)
                 // TODO: Mozna pridat konfilkty kdy ma slot uz rozhodciho prirazeneho
@@ -86,8 +86,14 @@ namespace Diplomka.Solver
             {
                 _bestState = greedy;
                 _bestCost = CalculateTotalCost(greedy);
+                Console.WriteLine($"[INFO] Nalezeno nové nejlepší řešení s náklady {_bestCost} v čase {_timer.Elapsed.TotalSeconds:F2}s");
+
             }
             */
+
+            _bestState = RandomState(allSlots, referees);   
+            _bestCost = CalculateTotalCost(_bestState);
+             Console.WriteLine($"[INFO] Nalezeno náhodné řešení s náklady {_bestCost} v čase {_timer.Elapsed.TotalSeconds:F2}s");
 
             // Pole pro sledování aktuálního přiřazení (index rozhodčího nebo -1)
             var currentAssignments = new int[_numSlots];
@@ -108,6 +114,20 @@ namespace Diplomka.Solver
             return _bestState ?? initialState;
         }
 
+        public State RandomState(List<Slot> slots, List<Referee> referees)
+        {
+            Random random = new Random();
+            State state = new State();
+
+            foreach (var slot in slots)
+            {
+                state.AddSlot(slot);
+                state.SetReferee(slot, referees[random.Next(referees.Count)]);
+            }
+
+            return state;
+        }
+
         // ---------------------------------------------------------
         // 3. GREEDY ALGORITMUS
         // ---------------------------------------------------------
@@ -119,9 +139,9 @@ namespace Diplomka.Solver
             for (int i = 0; i < _numReferees; i++)
                 greedyAssignments[i] = new List<int>();
 
-            var sortedSlotIndices = Enumerable.Range(0, _numSlots)
-                                              .OrderBy(i => allSlots[i].Start)
-                                              .ToList();
+            var sortedSlotIndices = Enumerable.Range(0, _numSlots).OrderBy(i => allSlots[i].Start).ToList();
+
+
 
             foreach (int sIdx in sortedSlotIndices)
             {
@@ -162,6 +182,8 @@ namespace Diplomka.Solver
         // Hlavní rekurzivní metoda pro B&B s MRV, Pruning, Bounding a Beam Search
         private void DFS(int[] slotIndices, int currentIdx, int currentCost, int[] assignments, List<Referee> referees, List<Slot> allSlots)
         {
+
+
             // Ochrana proti zamrznuti - kontrola casu
             if (_timeOutReached) return;
             // Abychom nebrzdili výkon, kontrolujeme čas jen občas, ale pro jistotu v každém uzlu:
@@ -175,7 +197,7 @@ namespace Diplomka.Solver
             if (currentCost >= _bestCost) return;
 
             // Bounding - vypocet dolni meze pro aktualni vetveni, pokud je horsi nez nejlepsi nalezena, nemusime pokracovat
-            int bound = LowerBound(slotIndices, currentIdx, currentCost);
+            int bound = LowerBoundStrict(slotIndices, currentIdx, currentCost);
             if (bound >= _bestCost) return;
 
             // Base case - pokud jsme priradili vsechny sloty, muzeme zkontrolovat a ulozit reseni
@@ -183,6 +205,7 @@ namespace Diplomka.Solver
             {
                 _bestCost = currentCost;
                 _bestState = BuildState(allSlots, referees, assignments);
+                Console.WriteLine($"[INFO] Nalezeno nové nejlepší řešení s náklady {_bestCost} v čase {_timer.Elapsed.TotalSeconds:F2}s");
                 return;
             }
 
@@ -200,7 +223,8 @@ namespace Diplomka.Solver
             foreach (var cand in candidates)
             {
                 // OMEZENÍ VĚTVENÍ (Beam Search): Zkusíme jen TOP X nejlepších
-                if (branchesExplored >= _maxBranchingFactor) break;
+                // EDIT: Zakomentovano
+                // if (branchesExplored >= _maxBranchingFactor) break;
 
                 if (IsFeasible(cand.RefIdx, sIdx))
                 {
@@ -255,7 +279,8 @@ namespace Diplomka.Solver
             return bound;
         }
 
-        private int LowerBoundStrict(int[] slotIndices, int startIdx, int currentCost)
+
+        public int LowerBoundStrict(int[] slotIndices, int startIdx, int currentCost)
         {
             int bound = currentCost;
 
@@ -319,7 +344,10 @@ namespace Diplomka.Solver
             var list = new List<(int Cost, int RefIdx)>(_numReferees);
             for (int r = 0; r < _numReferees; r++)
             {
-                list.Add((_costMatrix[slotIdx, r], r));
+                if (IsFeasible(r, slotIdx)) // TADY JE ZMĚNA: Přidej jen validní kandidáty
+                {
+                    list.Add((_costMatrix[slotIdx, r], r));
+                }
             }
 
             list.Sort((a, b) => a.Cost.CompareTo(b.Cost));
