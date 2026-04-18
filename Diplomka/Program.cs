@@ -24,13 +24,15 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
 
 var solver = new BranchAndBoundSolver(
     referees,
-    timeLimit: TimeSpan.FromSeconds(60)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(1800)   // zvyš pro lepší optimum, sniž pro rychlost
 );
+
+HCSolver hc = new HCSolver(referees);
 
 State result = solver.Solve(slots);
 
 Console.WriteLine();
-Console.WriteLine(result.ToString());
+Console.WriteLine("Rešení pomocí Branch & Bound:");
 Console.WriteLine($"Celková cena:       {CostCalculator.TotalCost(result):F2}");
 Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().Count}");
 Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
@@ -39,7 +41,6 @@ Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 CsvExporter.SaveState($"{rootDirectory}\\result.csv", result);
 
 
-HCSolver hc = new HCSolver(referees);
 Stopwatch swHC = Stopwatch.StartNew();
 Console.WriteLine("Zpracovávám přes Hill Climbing...");
 State resultHC = hc.Solve(slots);

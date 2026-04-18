@@ -60,6 +60,29 @@ namespace Diplomka.Solver
             this.timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
 
+        public State Solve(State state)
+        {
+            startTime = DateTime.UtcNow;
+            nodesExplored = 0;
+
+            var slotList = state.GetSlots();
+
+            // Warm start = jen lepší horní mez, DFS začíná od nuly
+            bestState = (State)state.Clone();
+            bestCost = CostCalculator.TotalCost(state);
+
+            Console.WriteLine($"[B&B] Warm start cena: {bestCost:F2}");
+
+            var emptyInitial = new State();
+            foreach (var slot in slotList)
+                emptyInitial.AddSlot(slot);
+
+            Dfs(emptyInitial, 0.0, slotList);
+
+            Console.WriteLine($"[B&B] Hotovo. Uzlů: {nodesExplored}, cena: {bestCost:F2}");
+            return bestState!;
+        }
+
         /*
          * Hlavni metod pro spusteni B&B solveru
          */
