@@ -11,6 +11,41 @@ namespace Diplomka.Solver
 {
     public class HCSolver
     {
+
+        private readonly List<Referee> referees;
+
+        private State? bestState;
+        private double bestCost;
+
+        public double BestCost => bestCost;
+
+        private int maxAttempts = 10;
+        public int MaxAttempts
+        {
+            get => maxAttempts;
+            set => maxAttempts = Math.Max(0, value);
+        }
+
+        private int maxIterations = 1000;
+        public int MaxIterations
+        {
+            get => maxIterations;
+            set => maxIterations = Math.Max(0, value);
+        }
+
+        private int maxMoves = 20;
+        public int MaxMoves
+        {
+            get => maxMoves;
+            set => maxMoves = Math.Max(0, value);
+        }
+
+        public HCSolver(IEnumerable<Referee> referees)
+        {
+            this.referees = referees.ToList();
+        }
+
+
         public int AssignmentCost(Slot slot, Referee referee)
         {
             // 1. Rozdíl úrovní (např. 0, 1, 2...)
@@ -78,24 +113,18 @@ namespace Diplomka.Solver
 
         }
 
-        public State Solve(List<Slot> slots, List<Referee> referees)
+        public State Solve(List<Slot> slots)
         {
-            int maxAttempts = 10;
-            int maxIterations = 1000;
-            int maxMoves = 20;
-
             State currentState = RandomState(slots, referees);
 
-            // Console.WriteLine(currentState.GetSlots().Count);
-
-            State bestState = (State)currentState.Clone();
-            int bestCost = StateCost(bestState);
+            bestState = (State)currentState.Clone();
+            bestCost = CostCalculator.TotalCost(bestState);
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                int currentCost = StateCost(currentState);
+                var currentCost = CostCalculator.TotalCost(currentState);
 
-                for (int iteration = 0; iteration < maxIterations; iteration++)
+                for (int iteration = 0; iteration < MaxIterations; iteration++)
                 {
                     bool foundNextState = false;    
 
@@ -123,7 +152,6 @@ namespace Diplomka.Solver
                     {
                         bestState = (State)currentState.Clone();
                         bestCost = currentCost;
-                        // Console.WriteLine($"Nalezeno lepsi reseni! Cena: {bestCost} (Pokus: {attempt})");
                     }
                     else if (!foundNextState)
                     {

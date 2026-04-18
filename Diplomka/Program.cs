@@ -39,16 +39,15 @@ Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 CsvExporter.SaveState($"{rootDirectory}\\result.csv", result);
 
 
-HCSolver hc = new HCSolver();
+HCSolver hc = new HCSolver(referees);
 Stopwatch swHC = Stopwatch.StartNew();
 Console.WriteLine("Zpracovávám přes Hill Climbing...");
-State resultHC = hc.Solve(slots, referees);
+State resultHC = hc.Solve(slots);
 swHC.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
 Console.WriteLine($"Cena: {CostCalculator.TotalCost(resultHC)}");
 Console.WriteLine($"Hotovo za: {swHC.ElapsedMilliseconds} ms");
-// Console.WriteLine(resultHC);
 
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
 
@@ -57,16 +56,3 @@ CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
 Console.WriteLine("Hotovo, stiskněte Enter pro ukončení.");
 Console.ReadKey();
 
-
-
-
-/*
-Console.WriteLine("Řešení pomocí Hill Climbing:");
-Console.WriteLine($"Cena: {hc.EvaluateCost(solution1)}");
-Console.WriteLine(solution1);
-Console.WriteLine("------------------------------------------");
-
-Console.WriteLine("Řešení pomocí Branch and Bound:");
-Console.WriteLine($"Cena: {bb.EvaluateCost(solution2)}");
-Console.WriteLine(solution2);
-*/
