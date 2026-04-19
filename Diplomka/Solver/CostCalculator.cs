@@ -1,4 +1,5 @@
 using Diplomka.Model;
+using Diplomka.Routing;
 
 namespace Diplomka.Solver
 {
@@ -6,11 +7,12 @@ namespace Diplomka.Solver
     /// Vypočítává cenu přiřazení rozhodčího ke slotu.
     /// Cena = váhovaný součet absolutního rozdílu hodnosti a vzdálenosti v km.
     /// </summary>
-    public static class CostCalculator
+    public sealed class CostCalculator
     {
         // Váhy jednotlivých složek ceny – lze ladit
         public const double RankWeight     = 1.0;
         public const double DistanceWeight = 1.0;
+
 
         /// <summary>
         /// Cena jednoho přiřazení (slot → rozhodčí).
@@ -18,7 +20,9 @@ namespace Diplomka.Solver
         public static double AssignmentCost(Slot slot, Referee referee)
         {
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
-            double distance = referee.Location.DistanceTo(slot.Location!);
+            // double distance = referee.Location.DistanceTo(slot.Location
+
+            double distance = DistanceTable.GetInstance().GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
             return RankWeight * rankDiff + DistanceWeight * distance;
         }
 

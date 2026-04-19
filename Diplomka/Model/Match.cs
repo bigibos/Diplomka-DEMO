@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Diplomka.Routing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +10,7 @@ namespace Diplomka.Model
     public class Match
     {
         public int Id { get; set; }
-        public Geo? Location { get; set; }
+        public Geo Location { get; set; }
 
         public DateTime Start { get; set; } = DateTime.MinValue;
         public DateTime End { get; set; } = DateTime.MinValue;

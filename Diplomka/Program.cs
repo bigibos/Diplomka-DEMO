@@ -4,6 +4,8 @@ using Diplomka.Files;
 using Diplomka.Solver;
 using System.Diagnostics;
 using Diplomka.ImportExport;
+using System.Runtime.ExceptionServices;
+using Diplomka.Routing;
 
 
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
@@ -11,20 +13,33 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
+
 
 var fs = new FileStorage();
 
 
-// CsvExporter.SaveSlots($"{rootDirectory}\\slots.csv", slots);
+var slotLocations = slots.Select(s => s.Location).Distinct().ToList();
+var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
+var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
+
+Console.WriteLine(allLocations.Count);  
+
+Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
+await DistanceTable.GetInstance().Initialize(allLocations);
+
+
+Console.WriteLine("Matice vzdáleností hotová.");
+// Console.WriteLine(DistanceTable.GetInstance());
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
+
 var solver = new BranchAndBoundSolver(
     referees,
-    timeLimit: TimeSpan.FromSeconds(1800)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(30)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
 HCSolver hc = new HCSolver(referees);
@@ -40,6 +55,8 @@ Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 
 CsvExporter.SaveState($"{rootDirectory}\\result.csv", result);
 
+
+Console.WriteLine("##############################################");
 
 Stopwatch swHC = Stopwatch.StartNew();
 Console.WriteLine("Zpracovávám přes Hill Climbing...");

@@ -5,12 +5,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Diplomka.Model
+namespace Diplomka.Routing
 {
     public class Geo
     {
-        public int Id { get; set; }
-        public record RouteInfo(double DistanceKm, double DurationMinutes);
 
         // Zeměpisná šířka (např. 50.0878)
         public double Lat { get; set; }
@@ -27,11 +25,11 @@ namespace Diplomka.Model
         {
             double r = 6371; // Poloměr Země v km
             
-            double dLat = Double.DegreesToRadians(other.Lat - this.Lat);
-            double dLon = Double.DegreesToRadians(other.Lon - this.Lon);
+            double dLat = double.DegreesToRadians(other.Lat - Lat);
+            double dLon = double.DegreesToRadians(other.Lon - Lon);
 
             double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                       Math.Cos(Double.DegreesToRadians(this.Lat)) * Math.Cos(Double.DegreesToRadians(other.Lat)) *
+                       Math.Cos(double.DegreesToRadians(Lat)) * Math.Cos(double.DegreesToRadians(other.Lat)) *
                        Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
 
             double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
@@ -45,7 +43,7 @@ namespace Diplomka.Model
             // OSRM API vyžaduje formát: longitude,latitude;longitude,latitude
             // Pozor: OSRM má prohozené pořadí oproti běžnému Lat,Lon!
             string url = $"http://router.project-osrm.org/route/v1/driving/" +
-                         $"{this.Lon.ToString().Replace(',', '.')},{this.Lat.ToString().Replace(',', '.')};" +
+                         $"{Lon.ToString().Replace(',', '.')},{Lat.ToString().Replace(',', '.')};" +
                          $"{other.Lon.ToString().Replace(',', '.')},{other.Lat.ToString().Replace(',', '.')}" +
                          $"?overview=false";
 
@@ -76,9 +74,24 @@ namespace Diplomka.Model
             }
         }
 
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is Geo other)
+            {
+                return Lat.Equals(other.Lat) && Lon.Equals(other.Lon);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Lat, Lon);
+        }
+
         public override string ToString()
         {
-            return $"{Lat}, {Lon}";
+            return $"{Lat:F4}, {Lon:F4}";
         }
     }
 }
