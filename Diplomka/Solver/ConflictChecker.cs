@@ -22,15 +22,21 @@ namespace Diplomka.Solver
         /// <summary>
         /// Vrátí true, pokud se dva sloty časově překrývají.
         /// </summary>
-        public bool Overlaps(Slot first, Slot second)
+        public bool Overlaps(Slot a, Slot b)
         {
+            // Ktery slot zacina driv
+            var (first, second) = a.Start < b.Start
+                ? (a, b)
+                : (b, a);
+
             // Pokud se prekrivaji uz ted, tak vracime
             if (first.End > second.Start)
-                return false;
+                return true;
 
             // Ziskani doby potrebne pro presun mezi sloty
             var route = _distanceTable.GetRouteInfo(first.Location, second.Location);
             TimeSpan travelTime = TimeSpan.FromMinutes(route.DurationMinutes);
+
 
             // Zjistime, kdy je dostupny po skonceni prvniho slotu
             DateTime availableTime = first.End
@@ -38,11 +44,12 @@ namespace Diplomka.Solver
                 .Add(travelTime)
                 .Add(_config.RefereePrepTime);
 
+
             // Rozhodci to nestihne
             if (availableTime > second.Start)
-                return false;
+                return true;
 
-            return true;
+            return false;
         }
 
         /// <summary>
@@ -64,12 +71,7 @@ namespace Diplomka.Solver
                 if (assignedReferee?.Id != referee.Id) 
                     continue;
 
-                // Ktery slot zacina driv
-                var (first, second) = slot.Start < assignedSlot.Start
-                    ? (slot, assignedSlot)
-                    : (assignedSlot, slot);
-
-                if (Overlaps(first, second))
+                if (Overlaps(slot, assignedSlot))
                     return false;
 
             }

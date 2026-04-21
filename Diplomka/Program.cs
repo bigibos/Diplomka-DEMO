@@ -60,12 +60,32 @@ Console.WriteLine("Matice vzdáleností hotová.");
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
+/*
+var brno = new Geo(49.1951, 16.6068);
+var praha = new Geo(50.0755, 14.4378);
+var pardubice = new Geo(50.0343, 15.7812);
+var hradec = new Geo(50.2092, 15.8328);
+
+var a = slots[0];
+var b = slots[1];
+
+
+if (conflictChecker.Overlaps(b, a))
+{
+    Console.WriteLine("Slot A a B se překrývají.");
+}
+else
+{
+    Console.WriteLine("Slot A a B se nepřekrývají.");
+}
+*/
+
 
 var solver = new BranchAndBoundSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(30)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(5)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
 HCSolver hc = new HCSolver(
