@@ -8,6 +8,18 @@ using System.Runtime.ExceptionServices;
 using Diplomka.Routing;
 
 
+/*
+ * 
+ * TODO: Opravit prekryvani casu
+ * Momentalne by to melo kontrolovat dojezdy a cas na pripravu, ale nefunguje to.
+ * Rozhodci jsou prirazeni do slotu kde nemaj absolutne sanci se umistit.
+ * PRoste je to horsi nez pri jednoduche kontrole prakryvu v predchozi verzi.
+ * 
+ * NUTNO OPRAVIT
+ * 
+ * 
+ */
+
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
 List<Slot> slots = new List<Slot>();
