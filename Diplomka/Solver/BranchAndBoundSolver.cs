@@ -43,8 +43,11 @@ namespace Diplomka.Solver
     /// </summary>
     public class BranchAndBoundSolver
     {
-        private readonly List<Referee> referees;
-        private readonly TimeSpan timeLimit;
+        private readonly List<Referee> _referees;
+        private readonly TimeSpan _timeLimit;
+
+        private readonly ConflictChecker _conflictChecker;
+        private readonly CostCalculator _costCalculator;
 
         private State? bestState;
         private double bestCost;
@@ -54,6 +57,7 @@ namespace Diplomka.Solver
         public long NodesExplored => nodesExplored;
         public double BestCost => bestCost;
 
+
         public BranchAndBoundSolver(
             IEnumerable<Referee> referees, 
             ConflictChecker conflictChecker,
@@ -61,8 +65,12 @@ namespace Diplomka.Solver
             TimeSpan? timeLimit = null
             )
         {
-            this.referees = referees.ToList();
-            this.timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
+            _referees = referees.ToList();
+            
+            _conflictChecker = conflictChecker; 
+            _costCalculator = costCalculator;
+            
+            _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
 
         public State Solve(State state)
@@ -74,7 +82,7 @@ namespace Diplomka.Solver
 
             // Warm start = jen lepší horní mez, DFS začíná od nuly
             bestState = (State)state.Clone();
-            bestCost = CostCalculator.TotalCost(state);
+            bestCost = _costCalculator.TotalCost(state);
 
             Console.WriteLine($"[B&B] Warm start cena: {bestCost:F2}");
 
@@ -100,22 +108,22 @@ namespace Diplomka.Solver
 
             // Jednoduche (greedy) pocatecni reseni pro upper bound
             Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
-            var greedyState = new GreedySolver(referees).Solve(slotList);
+            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
 
             // Pripadna oprava greedy reseni
             var emptyAfterGreedy = greedyState.GetEmptySlots();
             if (emptyAfterGreedy.Count > 0)
             {
                 Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
-                greedyState = new RepairHeuristic(referees).Repair(greedyState);
+                greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
             }
 
             bestState = greedyState;
-            bestCost  = CostCalculator.TotalCost(greedyState);
+            bestCost  = _costCalculator.TotalCost(greedyState);
             Console.WriteLine($"[B&B] Počáteční cena (greedy): {bestCost:F2}");
 
             // Spousteni B&B pro zlepseni reseni z greedy faze
-            Console.WriteLine($"[B&B] Spouštím B&B (limit: {timeLimit.TotalSeconds} s)...");
+            Console.WriteLine($"[B&B] Spouštím B&B (limit: {_timeLimit.TotalSeconds} s)...");
 
             // Prázdný výchozí stav pro B&B (přidáme sloty bez přiřazení)
             var initialState = new State();
@@ -137,7 +145,7 @@ namespace Diplomka.Solver
         private void Dfs(State state, double totalCost, List<Slot> slots)
         {
             // Kontrolujeme casove omezeni
-            if (DateTime.UtcNow - startTime > timeLimit)
+            if (DateTime.UtcNow - startTime > _timeLimit)
                 return;
 
             nodesExplored++;
@@ -161,9 +169,9 @@ namespace Diplomka.Solver
             var mrvSlot = SelectSlotMRV(state, emptySlots);
 
             // Serazeni kandidatu podle ceny (best-first)
-            var candidateRefs = ConflictChecker
-                .GetEligibleReferees(state, mrvSlot, referees)
-                .OrderBy(r => CostCalculator.AssignmentCost(mrvSlot, r))
+            var candidateRefs = _conflictChecker
+                .GetEligibleReferees(state, mrvSlot, _referees)
+                .OrderBy(r => _costCalculator.AssignmentCost(mrvSlot, r))
                 .ToList();
 
             // Pruning - neni zadny vhodny rozhodci
@@ -172,7 +180,7 @@ namespace Diplomka.Solver
 
             foreach (var referee in candidateRefs)
             {
-                double assignmentCost = CostCalculator.AssignmentCost(mrvSlot, referee);
+                double assignmentCost = _costCalculator.AssignmentCost(mrvSlot, referee);
                 double newTotalCost = totalCost + assignmentCost;
 
                 // Nastaveni rozhodciho ke slotu
@@ -180,7 +188,7 @@ namespace Diplomka.Solver
 
                 // Vypocet dolni meze (lower bound) pro aktualni stav
                 var remainingSlots = state.GetEmptySlots();
-                double lowerBound = newTotalCost + CostCalculator.LowerBoundForSlots(remainingSlots, referees);
+                double lowerBound = newTotalCost + _costCalculator.LowerBoundForSlots(remainingSlots, _referees);
 
                 // Pokud dolni mez je horsi nez aktualni nejlepsi reseni, prohledavame tuto vetvu
                 if (lowerBound < bestCost)
@@ -192,7 +200,7 @@ namespace Diplomka.Solver
                 state.ClearSlot(mrvSlot);
 
                 // Kontrola casu
-                if (DateTime.UtcNow - startTime > timeLimit)
+                if (DateTime.UtcNow - startTime > _timeLimit)
                     return;
             }
         }
@@ -208,8 +216,8 @@ namespace Diplomka.Solver
 
             foreach (var slot in emptySlots)
             {
-                int count = ConflictChecker
-                    .GetEligibleReferees(state, slot, referees)
+                int count = _conflictChecker
+                    .GetEligibleReferees(state, slot, _referees)
                     .Count;
 
                 // Nejprve sloty s nejmensim poctem vhodnych rozhodcich, pak sloty s nevyssim pozadovanym rankem

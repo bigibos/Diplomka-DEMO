@@ -20,9 +20,18 @@ namespace Diplomka.Solver
     {
         private readonly List<Referee> _referees;
 
-        public RepairHeuristic(IEnumerable<Referee> referees)
+        private readonly ConflictChecker _conflictChecker;
+        private readonly CostCalculator _costCalculator;
+
+        public RepairHeuristic(
+            IEnumerable<Referee> referees,
+            ConflictChecker conflictChecker,
+            CostCalculator costCalculator
+            )
         {
             _referees = referees.ToList();
+            _conflictChecker = conflictChecker;
+            _costCalculator = costCalculator;
         }
 
         public State Repair(State state)
@@ -36,10 +45,10 @@ namespace Diplomka.Solver
             foreach (var slot in emptySlots)
             {
                 // Pokus 1: standardní přiřazení
-                var eligible = ConflictChecker.GetEligibleReferees(current, slot, _referees);
+                var eligible = _conflictChecker.GetEligibleReferees(current, slot, _referees);
                 if (eligible.Count > 0)
                 {
-                    var best = eligible.OrderBy(r => CostCalculator.AssignmentCost(slot, r)).First();
+                    var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
                     current.SetReferee(slot, best);
                     continue;
                 }
@@ -51,7 +60,7 @@ namespace Diplomka.Solver
                 // Pokus 3: nouzové přiřazení (porušuje časovou kolizi – logujeme)
                 var fallback = _referees
                     .Where(r => r.Rank >= slot.RequiredRank)
-                    .OrderBy(r => CostCalculator.AssignmentCost(slot, r))
+                    .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
                     .FirstOrDefault();
 
                 if (fallback != null)
@@ -79,7 +88,7 @@ namespace Diplomka.Solver
             var conflictingAssignments = state
                 .Where(p => p.Value != null
                             && p.Value.Rank >= targetSlot.RequiredRank
-                            && ConflictChecker.Overlaps(p.Key, targetSlot)
+                            && _conflictChecker.Overlaps(p.Key, targetSlot)
                             && p.Key.RequiredRank <= targetSlot.RequiredRank) // nižší priorita
                 .OrderBy(p => p.Key.RequiredRank) // nejdříve nejméně náročné
                 .ToList();
@@ -91,10 +100,10 @@ namespace Diplomka.Solver
                 // Dočasně odeber konfliktní přiřazení
                 state.ClearSlot(conflict.Key);
 
-                if (ConflictChecker.CanAssign(state, targetSlot, referee))
+                if (_conflictChecker.CanAssign(state, targetSlot, referee))
                 {
                     // Zkontroluj, zda lze obsadit uvolněný slot jiným rozhodčím
-                    var replacements = ConflictChecker.GetEligibleReferees(state, conflict.Key, 
+                    var replacements = _conflictChecker.GetEligibleReferees(state, conflict.Key, 
                         _referees.Where(r => r.Id != referee.Id).ToList());
 
                     state.SetReferee(targetSlot, referee);
@@ -102,7 +111,7 @@ namespace Diplomka.Solver
                     if (replacements.Count > 0)
                     {
                         var replacement = replacements
-                            .OrderBy(r => CostCalculator.AssignmentCost(conflict.Key, r))
+                            .OrderBy(r => _costCalculator.AssignmentCost(conflict.Key, r))
                             .First();
                         state.SetReferee(conflict.Key, replacement);
                     }

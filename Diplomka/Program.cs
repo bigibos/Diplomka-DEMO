@@ -8,6 +8,18 @@ using System.Runtime.ExceptionServices;
 using Diplomka.Routing;
 
 
+/*
+ * 
+ * TODO: Opravit prekryvani casu
+ * Momentalne by to melo kontrolovat dojezdy a cas na pripravu, ale nefunguje to.
+ * Rozhodci jsou prirazeni do slotu kde nemaj absolutne sanci se umistit.
+ * PRoste je to horsi nez pri jednoduche kontrole prakryvu v predchozi verzi.
+ * 
+ * NUTNO OPRAVIT
+ * 
+ * 
+ */
+
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
 List<Slot> slots = new List<Slot>();
@@ -16,6 +28,18 @@ List<Referee> referees = new List<Referee>();
 slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
 referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
 
+
+var distanceTable = new DistanceTable();
+var config = new SolverConfiguration()
+{
+    DistanceWeight = 1.0,
+    RankWeight = 1.0,
+    RefereePostpTime = TimeSpan.FromMinutes(120),
+    RefereePrepTime = TimeSpan.FromMinutes(90)
+};
+
+var conflictChecker = new ConflictChecker(distanceTable, config);
+var costCalculator = new CostCalculator(distanceTable, config);
 
 var fs = new FileStorage();
 
@@ -28,7 +52,7 @@ var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
 Console.WriteLine(allLocations.Count);  
 
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
-await DistanceTable.GetInstance().Initialize(allLocations);
+await distanceTable.Initialize(allLocations);
 
 
 Console.WriteLine("Matice vzdáleností hotová.");
@@ -39,16 +63,22 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
 
 var solver = new BranchAndBoundSolver(
     referees,
+    conflictChecker,
+    costCalculator,
     timeLimit: TimeSpan.FromSeconds(30)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
-HCSolver hc = new HCSolver(referees);
+HCSolver hc = new HCSolver(
+    referees,
+    conflictChecker,
+    costCalculator
+);
 
 State result = solver.Solve(slots);
 
 Console.WriteLine();
 Console.WriteLine("Rešení pomocí Branch & Bound:");
-Console.WriteLine($"Celková cena:       {CostCalculator.TotalCost(result):F2}");
+Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(result):F2}");
 Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().Count}");
 Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 
@@ -64,7 +94,7 @@ State resultHC = hc.Solve(slots);
 swHC.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
-Console.WriteLine($"Cena: {CostCalculator.TotalCost(resultHC)}");
+Console.WriteLine($"Cena: {costCalculator.TotalCost(resultHC)}");
 Console.WriteLine($"Hotovo za: {swHC.ElapsedMilliseconds} ms");
 
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
