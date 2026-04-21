@@ -54,7 +54,12 @@ namespace Diplomka.Solver
         public long NodesExplored => nodesExplored;
         public double BestCost => bestCost;
 
-        public BranchAndBoundSolver(IEnumerable<Referee> referees, TimeSpan? timeLimit = null)
+        public BranchAndBoundSolver(
+            IEnumerable<Referee> referees, 
+            ConflictChecker conflictChecker,
+            CostCalculator costCalculator,
+            TimeSpan? timeLimit = null
+            )
         {
             this.referees = referees.ToList();
             this.timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);

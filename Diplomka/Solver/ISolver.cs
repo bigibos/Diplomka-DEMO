@@ -9,10 +9,8 @@ namespace Diplomka.Solver
 {
     public interface ISolver
     {
-        State Solve(List<Slot> slots, List<Referee> referees);
-        State Solve(State state, List<Referee> referees);
-        int AssignmentCost(Slot slot, Referee referee);
-        int StateCost(State state);
+        State Solve(List<Slot> slots, SolverConfiguration config);
+        State Solve(State state, SolverConfiguration config);
 
     }
 }

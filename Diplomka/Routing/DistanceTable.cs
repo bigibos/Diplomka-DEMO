@@ -8,22 +8,9 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Routing
 {
-    public sealed class DistanceTable
+    public class DistanceTable
     {
         private Dictionary<(Geo, Geo), RouteInfo> distances = new Dictionary<(Geo, Geo), RouteInfo>();
-
-        private static DistanceTable instance;
-
-        private DistanceTable() { }
-
-        public static DistanceTable GetInstance()
-        {
-            if (instance == null)
-                instance = new DistanceTable();
-
-            return instance;
-        }
-
 
         private static readonly HttpClient client = new HttpClient();
 
