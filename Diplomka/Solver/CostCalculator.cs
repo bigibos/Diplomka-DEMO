@@ -7,29 +7,35 @@ namespace Diplomka.Solver
     /// Vypočítává cenu přiřazení rozhodčího ke slotu.
     /// Cena = váhovaný součet absolutního rozdílu hodnosti a vzdálenosti v km.
     /// </summary>
-    public sealed class CostCalculator
+    public class CostCalculator
     {
         // Váhy jednotlivých složek ceny – lze ladit
         public const double RankWeight     = 1.0;
         public const double DistanceWeight = 1.0;
 
+        private readonly DistanceTable _distanceTable;
+
+        public CostCalculator(DistanceTable distanceTable)
+        {
+            _distanceTable = distanceTable;
+        }
 
         /// <summary>
         /// Cena jednoho přiřazení (slot → rozhodčí).
         /// </summary>
-        public static double AssignmentCost(Slot slot, Referee referee)
+        public double AssignmentCost(Slot slot, Referee referee)
         {
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
             // double distance = referee.Location.DistanceTo(slot.Location
 
-            double distance = DistanceTable.GetInstance().GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
+            double distance = _distanceTable.GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
             return RankWeight * rankDiff + DistanceWeight * distance;
         }
 
         /// <summary>
         /// Celková cena celého stavu (pouze přiřazené sloty).
         /// </summary>
-        public static double TotalCost(State state)
+        public double TotalCost(State state)
         {
             double total = 0;
             foreach (var (slot, referee) in state)
@@ -45,7 +51,7 @@ namespace Diplomka.Solver
         /// Pro každý slot bereme minimum přes VŠECHNY rozhodčí (bez ohledu na konflikty).
         /// Tato mez je přípustná (nikdy nepřeceňuje) → lze použít v B&B.
         /// </summary>
-        public static double LowerBoundForSlots(IEnumerable<Slot> slots, IReadOnlyList<Referee> referees)
+        public double LowerBoundForSlots(IEnumerable<Slot> slots, IReadOnlyList<Referee> referees)
         {
             double lb = 0;
             foreach (var slot in slots)
