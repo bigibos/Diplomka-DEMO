@@ -27,6 +27,7 @@ namespace Diplomka.Solver
             if (referee.Rank < slot.RequiredRank)
                 return false;
 
+            // TODO: Pricist cas na pripravu (cca 2h), odbavení (cca 1h) a cestu (dle vzdalenosti) 
             // Kontrola časových kolizí
             foreach (var (assignedSlot, assignedReferee) in state)
             {
