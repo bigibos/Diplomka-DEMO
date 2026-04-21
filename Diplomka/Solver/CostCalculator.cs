@@ -9,14 +9,13 @@ namespace Diplomka.Solver
     /// </summary>
     public class CostCalculator
     {
-        // Váhy jednotlivých složek ceny – lze ladit
-        public const double RankWeight     = 1.0;
-        public const double DistanceWeight = 1.0;
-
+       
+        private readonly SolverConfiguration _config;
         private readonly DistanceTable _distanceTable;
 
-        public CostCalculator(DistanceTable distanceTable)
+        public CostCalculator(DistanceTable distanceTable, SolverConfiguration config)
         {
+            _config = config;   
             _distanceTable = distanceTable;
         }
 
@@ -29,7 +28,7 @@ namespace Diplomka.Solver
             // double distance = referee.Location.DistanceTo(slot.Location
 
             double distance = _distanceTable.GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
-            return RankWeight * rankDiff + DistanceWeight * distance;
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
         }
 
         /// <summary>

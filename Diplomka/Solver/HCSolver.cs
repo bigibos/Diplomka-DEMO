@@ -6,6 +6,9 @@ public class HCSolver
     private readonly List<Referee> _referees;
     private readonly Random _random = new Random();  // sdílená instance
 
+    private readonly ConflictChecker _conflictChecker;
+    private readonly CostCalculator _costCalculator;
+
     private State? _bestState;
     public double BestCost { get; private set; }
 
@@ -13,15 +16,21 @@ public class HCSolver
     public int MaxIterations { get; set; } = 1000;
     public int MaxMoves { get; set; } = 20;
 
-    public HCSolver(IEnumerable<Referee> referees)
+    public HCSolver(
+        IEnumerable<Referee> referees,
+        ConflictChecker conflictChecker,
+        CostCalculator costCalculator
+        )
     {
         _referees = referees.ToList();
+        _conflictChecker = conflictChecker;
+        _costCalculator = costCalculator;
     }
 
     // Validní počáteční stav — greedy, ne náhodný
     private State InitialState(List<Slot> slots)
     {
-        return new GreedySolver(_referees).Solve(slots);
+        return new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
     }
 
     // Tah respektující omezení — vymění rozhodčího za způsobilého náhradníka
@@ -30,7 +39,7 @@ public class HCSolver
         var slots = state.GetSlots();
         // Vyber náhodný slot a zkus najít jiného způsobilého rozhodčího
         var slot = slots[_random.Next(slots.Count)];
-        var eligible = ConflictChecker.GetEligibleReferees(state, slot, _referees);
+        var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
         if (eligible.Count > 0)
         {
             state.SetReferee(slot, eligible[_random.Next(eligible.Count)]);
@@ -40,14 +49,14 @@ public class HCSolver
     public State Solve(State state)
     {
         _bestState = (State)state.Clone();
-        BestCost = CostCalculator.TotalCost(_bestState);
+        BestCost = _costCalculator.TotalCost(_bestState);
 
         for (int attempt = 0; attempt < MaxAttempts; attempt++)
         {
             // Restart z nejlepšího stavu + perturbace (Iterated Local Search)
             var currentState = (State)_bestState!.Clone();
             for (int p = 0; p < 5; p++) ApplyRandomMove(currentState); // perturbace
-            var currentCost = CostCalculator.TotalCost(currentState);
+            var currentCost = _costCalculator.TotalCost(currentState);
 
             for (int iteration = 0; iteration < MaxIterations; iteration++)
             {
@@ -57,7 +66,7 @@ public class HCSolver
                 {
                     var nextState = (State)currentState.Clone();
                     ApplyRandomMove(nextState);
-                    var nextCost = CostCalculator.TotalCost(nextState);
+                    var nextCost = _costCalculator.TotalCost(nextState);
 
                     if (nextCost < currentCost)
                     {

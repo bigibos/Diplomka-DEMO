@@ -22,10 +22,27 @@ namespace Diplomka.Solver
         /// <summary>
         /// Vrátí true, pokud se dva sloty časově překrývají.
         /// </summary>
-        public bool Overlaps(Slot a, Slot b)
+        public bool Overlaps(Slot first, Slot second)
         {
-            // Překryv nastane, pokud jeden začíná dříve, než druhý končí
-            return a.Start < b.End && b.Start < a.End;
+            // Pokud se prekrivaji uz ted, tak vracime
+            if (first.End > second.Start)
+                return false;
+
+            // Ziskani doby potrebne pro presun mezi sloty
+            var route = _distanceTable.GetRouteInfo(first.Location, second.Location);
+            TimeSpan travelTime = TimeSpan.FromMinutes(route.DurationMinutes);
+
+            // Zjistime, kdy je dostupny po skonceni prvniho slotu
+            DateTime availableTime = first.End
+                .Add(_config.RefereePostpTime)
+                .Add(travelTime)
+                .Add(_config.RefereePrepTime);
+
+            // Rozhodci to nestihne
+            if (availableTime > second.Start)
+                return false;
+
+            return true;
         }
 
         /// <summary>
@@ -51,22 +68,7 @@ namespace Diplomka.Solver
                     ? (slot, assignedSlot)
                     : (assignedSlot, slot);
 
-                // Pokud se prekrivaji uz ted, tak vracime
-                if (first.End > second.Start)
-                    return false;
-
-                // Ziskani doby potrebne pro presun mezi sloty
-                var route = _distanceTable.GetRouteInfo(assignedSlot.Location, slot.Location);
-                TimeSpan travelTime = TimeSpan.FromMinutes(route.DurationMinutes);
-
-                // Zjistime, kdy je dostupny po skonceni prvniho slotu
-                DateTime availableTime = first.End
-                    .Add(_config.RefereePostpTime)
-                    .Add(travelTime)
-                    .Add(_config.RefereePrepTime);
-
-                // Rozhodci to nestihne
-                if (availableTime > second.Start)
+                if (Overlaps(first, second))
                     return false;
 
             }
