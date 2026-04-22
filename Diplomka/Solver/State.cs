@@ -11,16 +11,16 @@ namespace Diplomka.Solver
     public class State : IEnumerable<KeyValuePair<Slot, Referee?>>, ICloneable
     {
         private Dictionary<Slot, Referee?> assignments = new();
-
-
-        public List<Slot> GetSlots()
-        {
-            return assignments.Keys.ToList();
-        }
+        private Dictionary<Referee, List<Slot>> refereeToSlots = new();
 
         public List<Referee?> GetReferees()
         {
             return assignments.Values.ToList();
+        }
+
+        public List<Slot> GetSlots()
+        {
+            return assignments.Keys.ToList();
         }
 
         public List<Slot> GetEmptySlots()
@@ -29,6 +29,15 @@ namespace Diplomka.Solver
                 .Where(p => p.Value == null)
                 .Select(p => p.Key)
                 .ToList();
+        }
+
+        public List<Slot> GetSlotsByReferee(Referee referee)
+        {
+            if (refereeToSlots.TryGetValue(referee, out var slots))
+            {
+                return slots;
+            }
+            return new List<Slot>();
         }
 
         public void AddSlot(Slot slot)
@@ -46,17 +55,39 @@ namespace Diplomka.Solver
 
         public void ClearSlot(Slot slot)
         {
-            if (assignments.ContainsKey(slot))
+            if (assignments.TryGetValue(slot, out var existingReferee) && existingReferee != null)
             {
+                RemoveFromIndex(existingReferee, slot);
                 assignments[slot] = null;
             }
         }
 
         public void SetReferee(Slot slot, Referee? referee)
         {
-            if (assignments.ContainsKey(slot))
+            if (!assignments.ContainsKey(slot))
+                return;
+
+            var oldReferee = assignments[slot];
+            if (oldReferee != null)
+                RemoveFromIndex(oldReferee, slot);   
+
+            assignments[slot] = referee;
+
+            if (referee != null)
             {
-                assignments[slot] = referee;
+                if (!refereeToSlots.ContainsKey(referee))
+                {
+                    refereeToSlots[referee] = new List<Slot>();
+                }
+                refereeToSlots[referee].Add(slot);
+            }
+        }
+
+        private void RemoveFromIndex(Referee referee, Slot slot)
+        {
+            if (refereeToSlots.TryGetValue(referee, out var list))
+            {
+                list.Remove(slot);
             }
         }
 
@@ -72,24 +103,23 @@ namespace Diplomka.Solver
 
         public override string ToString()
         {
-            string result = "";
-
-            result += "Stav:\n";
-            result += "---------------------\n";
+            var sb = new StringBuilder();
+            sb.AppendLine("Stav:");
+            sb.AppendLine("---------------------");
             foreach (var assignment in assignments)
             {
-                result += $"{assignment.Key}\t-> ";
+                sb.Append($"{assignment.Key}\t-> ");
                 if (assignment.Value != null)
                 {
-                    result += $"{assignment.Value}\t(Den {assignment.Key.Start.Day})({assignment.Key.RequiredRank}/{assignment.Value.Rank})({Math.Round(assignment.Value.Location.DistanceTo(assignment.Key.Location), 2)} km)\n";
+                    var dist = Math.Round(assignment.Value.Location.DistanceTo(assignment.Key.Location), 2);
+                    sb.AppendLine($"{assignment.Value}\t(Den {assignment.Key.Start.Day})({assignment.Key.RequiredRank}/{assignment.Value.Rank})({dist} km)");
                 }
                 else
                 {
-                    result += "No Referee Assigned\n";
+                    sb.AppendLine("No Referee Assigned");
                 }
             }
-
-            return result;
+            return sb.ToString();
         }
 
         public object Clone()
@@ -99,6 +129,12 @@ namespace Diplomka.Solver
             foreach (var assignment in assignments)
             {
                 cloned.assignments[assignment.Key] = assignment.Value;
+            }
+
+
+            foreach (var entry in refereeToSlots)
+            {
+                cloned.refereeToSlots[entry.Key] = new List<Slot>(entry.Value);
             }
 
             return cloned;

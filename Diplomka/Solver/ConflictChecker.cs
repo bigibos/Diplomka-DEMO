@@ -65,16 +65,13 @@ namespace Diplomka.Solver
 
             // TODO: Pricist cas na pripravu (cca 2h), odbavení (cca 1h) a cestu (dle vzdalenosti) 
             // Kontrola časových kolizí
-            foreach (var (assignedSlot, assignedReferee) in state)
+            foreach (var assignedSlot in state.GetSlotsByReferee(referee))
             {
-                // Pouze stejny rozhodci
-                if (assignedReferee?.Id != referee.Id) 
-                    continue;
-
                 if (Overlaps(slot, assignedSlot))
                     return false;
-
             }
+
+
 
             return true;
         }
