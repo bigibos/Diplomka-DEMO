@@ -28,6 +28,32 @@ namespace Diplomka.Solver
             return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
         }
 
+        // Vypocet ceny prirazeni rozhodci ke slotu
+        public double AssignmentCost(State state, Slot slot, Referee referee)
+        {
+            // Seřaď existující sloty rozhodčího chronologicky
+            var existing = state.GetSlotsByReferee(referee)
+                                .OrderBy(s => s.Start)
+                                .ToList();
+
+            // Najdi sousedy v časové sekvenci
+            var prev = existing.LastOrDefault(s => s.End <= slot.Start);
+            var next = existing.FirstOrDefault(s => s.Start >= slot.End);
+
+            var fromLoc = prev?.Location ?? referee.Location;  // domov, pokud žádný předchůdce
+            var toLoc = next?.Location ?? referee.Location;  // domov, pokud žádný následník
+                                                             // (nebo null pokud návrat neuvažuješ)
+
+            double distIn = _distanceTable.GetRouteInfo(fromLoc, slot.Location).DistanceKm;
+            double distOut = _distanceTable.GetRouteInfo(slot.Location, toLoc).DistanceKm;
+            double distSaved = _distanceTable.GetRouteInfo(fromLoc, toLoc).DistanceKm;
+
+            double marginalDistance = distIn + distOut - distSaved;
+
+            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
+        }
+
         // Vypocet ceny celehoho stavu
         public double TotalCost(State state)
         {

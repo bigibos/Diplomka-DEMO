@@ -12,6 +12,7 @@ namespace Diplomka.Solver
         public TimeSpan RefereePrepTime { get; set; } = TimeSpan.FromMinutes(90);
         public TimeSpan RefereePostpTime { get; set;} = TimeSpan.FromMinutes(120);
 
+        public TimeSpan MaxGapForDirectTravel { get; set; } = TimeSpan.FromHours(6);
 
         // Vahy pro vypocet cen
         public double RankWeight { get; set; } = 1.0;

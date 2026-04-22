@@ -180,7 +180,7 @@ namespace Diplomka.Solver
 
             // Serazeni kandidatu podle ceny (best-first)
             candidateRefs = candidateRefs
-                .OrderBy(r => _costCalculator.AssignmentCost(mrvSlot, r))
+                .OrderBy(r => _costCalculator.AssignmentCost(state, mrvSlot, r))
                 .ToList();
 
             // Pruning - neni zadny vhodny rozhodci
@@ -189,7 +189,7 @@ namespace Diplomka.Solver
 
             foreach (var referee in candidateRefs)
             {
-                double assignmentCost = _costCalculator.AssignmentCost(mrvSlot, referee);
+                double assignmentCost = _costCalculator.AssignmentCost(state, mrvSlot, referee);
                 double newTotalCost = totalCost + assignmentCost;
 
                 // Nastaveni rozhodciho ke slotu

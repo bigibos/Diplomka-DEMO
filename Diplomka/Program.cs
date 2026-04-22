@@ -65,7 +65,7 @@ var solver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(15)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
 HCSolver hc = new HCSolver(
