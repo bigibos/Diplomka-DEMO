@@ -1,7 +1,7 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
 using Diplomka.ImportExport.Mapping;
-using Diplomka.Model;
+using Diplomka.Entity;
 using Diplomka.Solver;
 using System;
 using System.Collections.Generic;

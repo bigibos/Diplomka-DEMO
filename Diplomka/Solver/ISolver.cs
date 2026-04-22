@@ -1,4 +1,4 @@
-﻿using Diplomka.Model;
+﻿using Diplomka.Entity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,8 +9,8 @@ namespace Diplomka.Solver
 {
     public interface ISolver
     {
-        State Solve(List<Slot> slots, SolverConfiguration config);
-        State Solve(State state, SolverConfiguration config);
+        State Solve(IEnumerable<Slot> slots);
+        State Solve(State state);
 
     }
 }

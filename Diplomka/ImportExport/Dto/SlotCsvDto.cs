@@ -8,6 +8,7 @@ namespace Diplomka.ImportExport.Dto
 {
     public class SlotCsvDto
     {
+        public int Id { get; set; } 
         public int RequiredRank { get; set; }
         public double Lat { get; set; }
         public double Lon { get; set; }

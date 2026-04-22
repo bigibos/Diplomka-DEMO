@@ -12,6 +12,7 @@ namespace Diplomka.ImportExport.Mapping
     {
         public RefereeMap()
         {
+            Map(m => m.Id).Name("Id");  
             Map(m => m.Name).Name("Name");
             Map(m => m.Rank).Name("Rank");
             Map(m => m.Lat).Name("Lat");

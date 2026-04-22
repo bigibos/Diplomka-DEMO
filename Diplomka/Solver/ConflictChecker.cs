@@ -1,4 +1,4 @@
-using Diplomka.Model;
+using Diplomka.Entity;
 using Diplomka.Routing;
 
 namespace Diplomka.Solver

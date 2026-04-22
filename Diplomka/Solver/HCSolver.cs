@@ -1,16 +1,19 @@
-﻿using Diplomka.Model;
+﻿using Diplomka.Entity;
 using Diplomka.Solver;
 
-public class HCSolver
+namespace Diplomka.Solver
+{
+    public class HCSolver : ISolver
 {
     private readonly List<Referee> _referees;
-    private readonly Random _random = new Random();  // sdílená instance
+    private readonly Random _random = new Random();
 
     private readonly ConflictChecker _conflictChecker;
     private readonly CostCalculator _costCalculator;
 
     private State? _bestState;
-    public double BestCost { get; private set; }
+    private double _bestCost;
+    public double BestCost => _bestCost;
 
     public int MaxAttempts { get; set; } = 10;
     public int MaxIterations { get; set; } = 1000;
@@ -49,7 +52,7 @@ public class HCSolver
     public State Solve(State state)
     {
         _bestState = (State)state.Clone();
-        BestCost = _costCalculator.TotalCost(_bestState);
+        _bestCost = _costCalculator.TotalCost(_bestState);
 
         for (int attempt = 0; attempt < MaxAttempts; attempt++)
         {
@@ -80,20 +83,21 @@ public class HCSolver
                 if (!improved) break; // lokální optimum — ukonči iteraci
             }
 
-            if (currentCost < BestCost)
+            if (currentCost < _bestCost)
             {
                 _bestState = (State)currentState.Clone();
-                BestCost = currentCost;
+                _bestCost = currentCost;
             }
         }
 
-        Console.WriteLine($"[HC] Hotovo. Nejlepší cena: {BestCost:F2}");
+        Console.WriteLine($"[HC] Hotovo. Nejlepší cena: {_bestCost:F2}");
         return _bestState!;
     }
 
-    public State Solve(List<Slot> slots)
+    public State Solve(IEnumerable<Slot> slots)
     {
-        var initialState = InitialState(slots);
+        var initialState = InitialState(slots.ToList());
         return Solve(initialState);
     }
+}
 }

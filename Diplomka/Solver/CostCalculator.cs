@@ -1,4 +1,4 @@
-using Diplomka.Model;
+using Diplomka.Entity;
 using Diplomka.Routing;
 
 namespace Diplomka.Solver
@@ -19,21 +19,16 @@ namespace Diplomka.Solver
             _distanceTable = distanceTable;
         }
 
-        /// <summary>
-        /// Cena jednoho přiřazení (slot → rozhodčí).
-        /// </summary>
+        // Vypocet ceny prirazeni rozhodci ke slotu
         public double AssignmentCost(Slot slot, Referee referee)
         {
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
-            // double distance = referee.Location.DistanceTo(slot.Location
 
             double distance = _distanceTable.GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
             return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
         }
 
-        /// <summary>
-        /// Celková cena celého stavu (pouze přiřazené sloty).
-        /// </summary>
+        // Vypocet ceny celehoho stavu
         public double TotalCost(State state)
         {
             double total = 0;
@@ -45,12 +40,40 @@ namespace Diplomka.Solver
             return total;
         }
 
-        /// <summary>
-        /// Dolní mez ceny pro množinu neohodnocených slotů.
-        /// Pro každý slot bereme minimum přes VŠECHNY rozhodčí (bez ohledu na konflikty).
-        /// Tato mez je přípustná (nikdy nepřeceňuje) → lze použít v B&B.
-        /// </summary>
-        public double LowerBoundForSlots(IEnumerable<Slot> slots, IReadOnlyList<Referee> referees)
+        // Vypocet dolni meze pro neohodnocene sloty v danem stavu.
+        public double LowerBoundForSlots(
+            State state,
+            IEnumerable<Slot> emptySlots,
+            IReadOnlyList<Referee> referees,
+            ConflictChecker conflictChecker)
+        {
+            double lb = 0;
+            foreach (var slot in emptySlots)
+            {
+                double minCost = double.MaxValue;
+
+                foreach (var referee in referees)
+                {
+                    // Kontrola způsobilosti v aktuálním kontextu (rank + časové kolize)
+                    if (conflictChecker.CanAssign(state, slot, referee))
+                    {
+                        double c = AssignmentCost(slot, referee);
+                        if (c < minCost) minCost = c;
+                    }
+                }
+
+                // Pokud pro prázdný slot neexistuje v aktuálním stavu žádný kandidát,
+                // znamená to, že tato větev je "mrtvá" – vrátíme extrémní penalizaci.
+                if (minCost == double.MaxValue)
+                    return 1_000_000; // Okamžitý pruning
+
+                lb += minCost;
+            }
+            return lb;
+        }
+
+        // Vypocet dolni meze pro neohodnocene sloty bez ohledu na konflikt s ostatnimi sloty
+        public double LowerBoundForSlotsSoft(IEnumerable<Slot> slots, IReadOnlyList<Referee> referees)
         {
             double lb = 0;
             foreach (var slot in slots)
@@ -58,7 +81,7 @@ namespace Diplomka.Solver
                 double minCost = double.MaxValue;
                 foreach (var referee in referees)
                 {
-                    if (referee.Rank >= slot.RequiredRank)           // pouze způsobilí rozhodčí
+                    if (referee.Rank >= slot.RequiredRank) // pouze způsobilí rozhodčí
                     {
                         double c = AssignmentCost(slot, referee);
                         if (c < minCost) minCost = c;

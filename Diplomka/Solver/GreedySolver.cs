@@ -1,4 +1,4 @@
-using Diplomka.Model;
+using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
@@ -12,7 +12,7 @@ namespace Diplomka.Solver
     ///
     /// Složitost: O(S × R) kde S = počet slotů, R = počet rozhodčích.
     /// </summary>
-    public class GreedySolver
+    public class GreedySolver : ISolver
     {
         private readonly List<Referee> _referees;
 
@@ -28,6 +28,11 @@ namespace Diplomka.Solver
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;   
+        }
+
+        public State Solve(State state)
+        {
+            return Solve(state.GetSlots());
         }
 
         public State Solve(IEnumerable<Slot> slots)

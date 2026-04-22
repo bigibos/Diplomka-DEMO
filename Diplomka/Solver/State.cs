@@ -1,4 +1,4 @@
-﻿using Diplomka.Model;
+﻿using Diplomka.Entity;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,30 +10,30 @@ namespace Diplomka.Solver
 {
     public class State : IEnumerable<KeyValuePair<Slot, Referee?>>, ICloneable
     {
-        private Dictionary<Slot, Referee?> assignments = new();
-        private Dictionary<Referee, List<Slot>> refereeToSlots = new();
+        private Dictionary<Slot, Referee?> _assignments = new();
+        private Dictionary<Referee, List<Slot>> _refereeToSlots = new();
+        private HashSet<Slot> _emptySlots = new();
 
-        private HashSet<Slot> emptySlots = new();
 
         public List<Referee?> GetReferees()
         {
-            return assignments.Values.ToList();
+            return _assignments.Values.ToList();
         }
 
         public List<Slot> GetSlots()
         {
-            return assignments.Keys.ToList();
+            return _assignments.Keys.ToList();
         }
 
 
         public IEnumerable<Slot> GetEmptySlots()
         {
-            return emptySlots;
+            return _emptySlots;
         }
 
         public List<Slot> GetSlotsByReferee(Referee referee)
         {
-            if (refereeToSlots.TryGetValue(referee, out var slots))
+            if (_refereeToSlots.TryGetValue(referee, out var slots))
             {
                 return slots;
             }
@@ -42,60 +42,60 @@ namespace Diplomka.Solver
 
         public void AddSlot(Slot slot)
         {
-            assignments[slot] = null;
-            emptySlots.Add(slot);
+            _assignments[slot] = null;
+            _emptySlots.Add(slot);
         }
 
         public void RemoveSlot(Slot slot)
         {
-            if (assignments.TryGetValue(slot, out var existingReferee))
+            if (_assignments.TryGetValue(slot, out var existingReferee))
             {
                 if (existingReferee != null)
                     RemoveFromIndex(existingReferee, slot);
                 else
-                    emptySlots.Remove(slot);
+                    _emptySlots.Remove(slot);
                 
-                assignments.Remove(slot);
+                _assignments.Remove(slot);
             }
         }
 
         public void ClearSlot(Slot slot)
         {
-            if (assignments.TryGetValue(slot, out var existingReferee) && existingReferee != null)
+            if (_assignments.TryGetValue(slot, out var existingReferee) && existingReferee != null)
             {
                 RemoveFromIndex(existingReferee, slot);
-                assignments[slot] = null;
-                emptySlots.Add(slot);
+                _assignments[slot] = null;
+                _emptySlots.Add(slot);
             }
         }
 
         public void SetReferee(Slot slot, Referee? referee)
         {
-            if (!assignments.TryGetValue(slot, out var oldReferee))
+            if (!_assignments.TryGetValue(slot, out var oldReferee))
                 return;
 
             if (oldReferee != null)
                 RemoveFromIndex(oldReferee, slot);   
 
-            assignments[slot] = referee;
+            _assignments[slot] = referee;
 
             if (referee != null)
             {
-                emptySlots.Remove(slot);
-                if (!refereeToSlots.ContainsKey(referee))
-                    refereeToSlots[referee] = new List<Slot>();
+                _emptySlots.Remove(slot);
+                if (!_refereeToSlots.ContainsKey(referee))
+                    _refereeToSlots[referee] = new List<Slot>();
                 
-                refereeToSlots[referee].Add(slot);
+                _refereeToSlots[referee].Add(slot);
             }
             else
             {
-                emptySlots.Add(slot);
+                _emptySlots.Add(slot);
             }
         }
 
         private void RemoveFromIndex(Referee referee, Slot slot)
         {
-            if (refereeToSlots.TryGetValue(referee, out var list))
+            if (_refereeToSlots.TryGetValue(referee, out var list))
             {
                 list.Remove(slot);
             }
@@ -103,7 +103,7 @@ namespace Diplomka.Solver
 
         public IEnumerator<KeyValuePair<Slot, Referee?>> GetEnumerator()
         {
-            return assignments.GetEnumerator();
+            return _assignments.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -116,7 +116,7 @@ namespace Diplomka.Solver
             var sb = new StringBuilder();
             sb.AppendLine("Stav:");
             sb.AppendLine("---------------------");
-            foreach (var assignment in assignments)
+            foreach (var assignment in _assignments)
             {
                 sb.Append($"{assignment.Key}\t-> ");
                 if (assignment.Value != null)
@@ -136,18 +136,18 @@ namespace Diplomka.Solver
         {
             var cloned = new State();
 
-            foreach (var assignment in assignments)
+            foreach (var assignment in _assignments)
             {
-                cloned.assignments[assignment.Key] = assignment.Value;
+                cloned._assignments[assignment.Key] = assignment.Value;
             }
 
 
-            foreach (var entry in refereeToSlots)
+            foreach (var entry in _refereeToSlots)
             {
-                cloned.refereeToSlots[entry.Key] = new List<Slot>(entry.Value);
+                cloned._refereeToSlots[entry.Key] = new List<Slot>(entry.Value);
             }
 
-            cloned.emptySlots = new HashSet<Slot>(this.emptySlots);
+            cloned._emptySlots = new HashSet<Slot>(this._emptySlots);
 
             return cloned;
         }

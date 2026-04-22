@@ -1,4 +1,4 @@
-using Diplomka.Model;
+using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
@@ -41,7 +41,7 @@ namespace Diplomka.Solver
     /// ── Složitost ─────────────────────────────────────────────────────────────────
     ///   Nejhorší případ exponenciální, v praxi silně prořezáno UB z greedy fáze.
     /// </summary>
-    public class BranchAndBoundSolver
+    public class BBSolver : ISolver
     {
         private readonly List<Referee> _referees;
         private readonly TimeSpan _timeLimit;
@@ -49,16 +49,18 @@ namespace Diplomka.Solver
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
 
-        private State? bestState;
-        private double bestCost;
-        private long nodesExplored;
-        private DateTime startTime;
+        private State? _bestState;
+        private double _bestCost;
+        private long _nodesExplored;
+        private DateTime _startTime;
 
-        public long NodesExplored => nodesExplored;
-        public double BestCost => bestCost;
+        private bool _timeLimitExceeded;
+
+        public long NodesExplored => _nodesExplored;
+        public double BestCost => _bestCost;
 
 
-        public BranchAndBoundSolver(
+        public BBSolver(
             IEnumerable<Referee> referees, 
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
@@ -75,16 +77,17 @@ namespace Diplomka.Solver
 
         public State Solve(State state)
         {
-            startTime = DateTime.UtcNow;
-            nodesExplored = 0;
+            _startTime = DateTime.UtcNow;
+            _nodesExplored = 0;
+            _timeLimitExceeded = false;
 
             var slotList = state.GetSlots();
 
             // Warm start = jen lepší horní mez, DFS začíná od nuly
-            bestState = (State)state.Clone();
-            bestCost = _costCalculator.TotalCost(state);
+            _bestState = (State)state.Clone();
+            _bestCost = _costCalculator.TotalCost(state);
 
-            Console.WriteLine($"[B&B] Warm start cena: {bestCost:F2}");
+            Console.WriteLine($"[B&B] Warm start cena: {_bestCost:F2}");
 
             var emptyInitial = new State();
             foreach (var slot in slotList)
@@ -92,8 +95,8 @@ namespace Diplomka.Solver
 
             Dfs(emptyInitial, 0.0);
 
-            Console.WriteLine($"[B&B] Hotovo. Uzlů: {nodesExplored}, cena: {bestCost:F2}");
-            return bestState!;
+            Console.WriteLine($"[B&B] Hotovo. Uzlů: {_nodesExplored}, cena: {_bestCost:F2}");
+            return _bestState!;
         }
 
         /*
@@ -101,8 +104,9 @@ namespace Diplomka.Solver
          */
         public State Solve(IEnumerable<Slot> slots)
         {
-            startTime = DateTime.UtcNow;
-            nodesExplored = 0;
+            _startTime = DateTime.UtcNow;
+            _nodesExplored = 0;
+            _timeLimitExceeded = false;
 
             var slotList = slots.ToList();
 
@@ -111,16 +115,16 @@ namespace Diplomka.Solver
             var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
 
             // Pripadna oprava greedy reseni
-            var emptyAfterGreedy = greedyState.GetEmptySlots();
-            if (emptyAfterGreedy.ToList().Count > 0)
+            var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
+            if (emptyAfterGreedy.Count > 0)
             {
-                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.ToList().Count} slotů – spouštím repair...");
+                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
                 greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
             }
 
-            bestState = greedyState;
-            bestCost  = _costCalculator.TotalCost(greedyState);
-            Console.WriteLine($"[B&B] Počáteční cena (greedy): {bestCost:F2}");
+            _bestState = greedyState;
+            _bestCost  = _costCalculator.TotalCost(greedyState);
+            Console.WriteLine($"[B&B] Počáteční cena (greedy): {_bestCost:F2}");
 
             // Spousteni B&B pro zlepseni reseni z greedy faze
             Console.WriteLine($"[B&B] Spouštím B&B (limit: {_timeLimit.TotalSeconds} s)...");
@@ -132,8 +136,8 @@ namespace Diplomka.Solver
 
             Dfs(initialState, 0.0);
 
-            Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {nodesExplored}, nejlepší cena: {bestCost:F2}");
-            return bestState!;
+            Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {_nodesExplored}, nejlepší cena: {_bestCost:F2}");
+            return _bestState!;
         }
 
         /*
@@ -144,11 +148,17 @@ namespace Diplomka.Solver
          */
         private void Dfs(State state, double totalCost)
         {
-            // Kontrolujeme casove omezeni
-            if (DateTime.UtcNow - startTime > _timeLimit)
-                return;
+            _nodesExplored++;
 
-            nodesExplored++;
+            if (_nodesExplored % 500 == 0)
+            {
+                // Kontrolujeme casove omezeni
+                if (DateTime.UtcNow - _startTime > _timeLimit)
+                    _timeLimitExceeded = true;
+            }
+
+            if (_timeLimitExceeded)
+                return;
 
             // Vyber prazdnych slotu
             var emptySlots = state.GetEmptySlots().ToList();
@@ -156,11 +166,11 @@ namespace Diplomka.Solver
             if (emptySlots.Count == 0)
             {
                 // Nalezeni lepsiho reseni
-                if (totalCost < bestCost)
+                if (totalCost < _bestCost)
                 {
-                    bestCost  = totalCost;
-                    bestState = (State)state.Clone();
-                    Console.WriteLine($"[B&B] Nové optimum: {bestCost:F2} (uzlů: {nodesExplored})");
+                    _bestCost  = totalCost;
+                    _bestState = (State)state.Clone();
+                    Console.WriteLine($"[B&B] Nové optimum: {_bestCost:F2} (uzlů: {_nodesExplored})");
                 }
                 return;
             }
@@ -187,10 +197,10 @@ namespace Diplomka.Solver
 
                 // Vypocet dolni meze (lower bound) pro aktualni stav
                 var remainingSlots = state.GetEmptySlots();
-                double lowerBound = newTotalCost + _costCalculator.LowerBoundForSlots(remainingSlots, _referees);
+                double lowerBound = newTotalCost + _costCalculator.LowerBoundForSlots(state, remainingSlots, _referees, _conflictChecker);
 
                 // Pokud dolni mez je horsi nez aktualni nejlepsi reseni, prohledavame tuto vetvu
-                if (lowerBound < bestCost)
+                if (lowerBound < _bestCost)
                 {
                     Dfs(state, newTotalCost);
                 }
@@ -199,7 +209,7 @@ namespace Diplomka.Solver
                 state.ClearSlot(mrvSlot);
 
                 // Kontrola casu
-                if (DateTime.UtcNow - startTime > _timeLimit)
+                if (_timeLimitExceeded)
                     return;
             }
         }

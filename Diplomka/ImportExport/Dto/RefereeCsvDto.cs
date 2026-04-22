@@ -8,6 +8,7 @@ namespace Diplomka.ImportExport.Dto
 {
     public class RefereeCsvDto
     {
+        public int Id { get; set; }
         public string Name { get; set; } = "";
         public int Rank { get; set; }
         public double Lat { get; set; }

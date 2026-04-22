@@ -2,7 +2,7 @@
 using CsvHelper.Configuration;
 using Diplomka.ImportExport.Dto;
 using Diplomka.ImportExport.Mapping;
-using Diplomka.Model;
+using Diplomka.Entity;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -48,8 +48,7 @@ namespace Diplomka.ImportExport
 
             var records = csv.GetRecords<RefereeCsvDto>().ToList();
 
-            int id = 1;
-            return records.Select(r => CsvMapper.ToEntity(r, id++)).ToList();
+            return records.Select(CsvMapper.ToEntity).ToList();
         }
     }
 }

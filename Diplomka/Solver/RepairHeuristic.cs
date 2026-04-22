@@ -1,4 +1,4 @@
-using Diplomka.Model;
+using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
@@ -104,7 +104,7 @@ namespace Diplomka.Solver
                 {
                     // Zkontroluj, zda lze obsadit uvolněný slot jiným rozhodčím
                     var replacements = _conflictChecker.GetEligibleReferees(state, conflict.Key, 
-                        _referees.Where(r => r.Id != referee.Id).ToList());
+                        _referees.Where(r => !r.Equals(referee)).ToList());
 
                     state.SetReferee(targetSlot, referee);
 

@@ -1,11 +1,12 @@
 ﻿using Diplomka;
-using Diplomka.Model;
+using Diplomka.Entity;
 using Diplomka.Files;
 using Diplomka.Solver;
 using System.Diagnostics;
 using Diplomka.ImportExport;
 using System.Runtime.ExceptionServices;
 using Diplomka.Routing;
+using System.Net.Http.Headers;
 
 
 /*
@@ -59,32 +60,12 @@ Console.WriteLine("Matice vzdáleností hotová.");
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
-/*
-var brno = new Geo(49.1951, 16.6068);
-var praha = new Geo(50.0755, 14.4378);
-var pardubice = new Geo(50.0343, 15.7812);
-var hradec = new Geo(50.2092, 15.8328);
 
-var a = slots[0];
-var b = slots[1];
-
-
-if (conflictChecker.Overlaps(b, a))
-{
-    Console.WriteLine("Slot A a B se překrývají.");
-}
-else
-{
-    Console.WriteLine("Slot A a B se nepřekrývají.");
-}
-*/
-
-
-var solver = new BranchAndBoundSolver(
+var solver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(60)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(10)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
 HCSolver hc = new HCSolver(
@@ -93,7 +74,10 @@ HCSolver hc = new HCSolver(
     costCalculator
 );
 
+Stopwatch sw = new Stopwatch();
+sw.Restart();
 State result = solver.Solve(slots);
+sw.Stop(); 
 
 
 Console.WriteLine();
@@ -101,21 +85,20 @@ Console.WriteLine("Rešení pomocí Branch & Bound:");
 Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(result):F2}");
 Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().ToList().Count}");
 Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
-
+Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
 
 CsvExporter.SaveState($"{rootDirectory}\\result.csv", result);
 
 
 Console.WriteLine("##############################################");
 
-Stopwatch swHC = Stopwatch.StartNew();
-Console.WriteLine("Zpracovávám přes Hill Climbing...");
+sw.Restart();
 State resultHC = hc.Solve(slots);
-swHC.Stop();
+sw.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
 Console.WriteLine($"Cena: {costCalculator.TotalCost(resultHC)}");
-Console.WriteLine($"Hotovo za: {swHC.ElapsedMilliseconds} ms");
+Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
 
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
 

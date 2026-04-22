@@ -1,4 +1,4 @@
-﻿using Diplomka.Model;
+﻿using Diplomka.Entity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,11 +10,12 @@ namespace Diplomka.Routing
 {
     public class DistanceTable
     {
-        private Dictionary<(Geo, Geo), RouteInfo> distances = new Dictionary<(Geo, Geo), RouteInfo>();
+        private Dictionary<(Geo, Geo), RouteInfo> _distances = new Dictionary<(Geo, Geo), RouteInfo>();
 
-        private static readonly HttpClient client = new HttpClient();
+        private static readonly HttpClient _client = new HttpClient();
 
-        public async Task<Dictionary<(Geo, Geo), RouteInfo>> GetDistanceMatrixAsync(List<Geo> locations)
+        // Asynchroni volani OSRM API pro ziskani matice vzdalenosti mezi vsemi lokacemi
+        private async Task<Dictionary<(Geo, Geo), RouteInfo>> GetDistanceMatrixAsync(List<Geo> locations)
         {
             var result = new Dictionary<(Geo, Geo), RouteInfo>();
 
@@ -24,7 +25,7 @@ namespace Diplomka.Routing
 
             string url = $"http://router.project-osrm.org/table/v1/driving/{coords}?annotations=distance,duration";
 
-            string response = await client.GetStringAsync(url);
+            string response = await _client.GetStringAsync(url);
 
 
             using JsonDocument doc = JsonDocument.Parse(response);
@@ -52,30 +53,32 @@ namespace Diplomka.Routing
             return result;
         }
 
-        // Vybudovani tabulky vzdalenosti mezi vsemi lokacemi
+        // Inicializace tabulky vzdalenosti pro zadany seznam lokaci
         public async Task Initialize(IEnumerable<Geo> locations)
         {
             var locationList = locations.ToList();
 
 
-            distances = await GetDistanceMatrixAsync(locationList);
+            _distances = await GetDistanceMatrixAsync(locationList);
         }
 
-        public RouteInfo GetRouteInfo(Geo from, Geo to)
+        // Diskani vzdalenosti z tabulky
+        public RouteInfo? GetRouteInfo(Geo from, Geo to)
         {
             if (from.Equals(to))
-                return new RouteInfo(0, 0);
+                return new RouteInfo(0, 0); // Stejna lokace, vzdalenost i cas jsou nula
 
+            if (_distances.TryGetValue((from, to), out var info))
+                return info;
 
-            return distances[(from, to)];
+            return null;
         }
 
         // Ziskani vzdalenosti z tabulky, nebo pres API, pokud chybi
         public async Task<RouteInfo> GetRouteInfoAsync(Geo from, Geo to)
         {
-            if (distances.TryGetValue((from, to), out var info))
-            {
-                Console.WriteLine($"Cache hit for {from} -> {to}: {info.DistanceKm} km, {info.DurationMinutes} min");   
+            if (_distances.TryGetValue((from, to), out var info))
+            {  
                 return info;
             }
             else
@@ -83,12 +86,10 @@ namespace Diplomka.Routing
                 var routeInfo = await from.GetRoadRouteToAsync(to);
                 if (routeInfo == null)
                 {
-                    Console.WriteLine($"OSRM failed for {from} -> {to}, using straight-line distance as fallback.");
                     // Pokud OSRM nenajde cestu, použijeme vzdušnou vzdálenost jako záložní
                     routeInfo = new RouteInfo(from.DistanceTo(to), from.DistanceTo(to) / 60); // Předpokládejme průměrnou rychlost 60 km/h
                 }
-                distances[(from, to)] = routeInfo;
-                Console.WriteLine($"Cache miss for {from} -> {to}: {routeInfo.DistanceKm} km, {routeInfo.DurationMinutes} min");
+                _distances[(from, to)] = routeInfo;
                 return routeInfo;
             }
         }
@@ -97,7 +98,7 @@ namespace Diplomka.Routing
         public override string ToString()
         {
             string result = "Distance Table:\n";
-            foreach (var entry in distances)
+            foreach (var entry in _distances)
             {
                 result += $"{entry.Key.Item1} -> {entry.Key.Item2}: {entry.Value.DistanceKm:F2} km, {entry.Value.DurationMinutes:F2} min\n";
             }
