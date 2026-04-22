@@ -112,9 +112,9 @@ namespace Diplomka.Solver
 
             // Pripadna oprava greedy reseni
             var emptyAfterGreedy = greedyState.GetEmptySlots();
-            if (emptyAfterGreedy.Count > 0)
+            if (emptyAfterGreedy.ToList().Count > 0)
             {
-                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
+                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.ToList().Count} slotů – spouštím repair...");
                 greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
             }
 
@@ -151,7 +151,7 @@ namespace Diplomka.Solver
             nodesExplored++;
 
             // Vyber prazdnych slotu
-            var emptySlots = state.GetEmptySlots();
+            var emptySlots = state.GetEmptySlots().ToList();
 
             if (emptySlots.Count == 0)
             {

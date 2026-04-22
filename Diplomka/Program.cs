@@ -84,7 +84,7 @@ var solver = new BranchAndBoundSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(60)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
 HCSolver hc = new HCSolver(
@@ -99,7 +99,7 @@ State result = solver.Solve(slots);
 Console.WriteLine();
 Console.WriteLine("Rešení pomocí Branch & Bound:");
 Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(result):F2}");
-Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().Count}");
+Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().ToList().Count}");
 Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 
 

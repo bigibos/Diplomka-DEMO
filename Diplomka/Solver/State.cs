@@ -13,6 +13,8 @@ namespace Diplomka.Solver
         private Dictionary<Slot, Referee?> assignments = new();
         private Dictionary<Referee, List<Slot>> refereeToSlots = new();
 
+        private HashSet<Slot> emptySlots = new();
+
         public List<Referee?> GetReferees()
         {
             return assignments.Values.ToList();
@@ -23,12 +25,10 @@ namespace Diplomka.Solver
             return assignments.Keys.ToList();
         }
 
-        public List<Slot> GetEmptySlots()
+
+        public IEnumerable<Slot> GetEmptySlots()
         {
-            return assignments
-                .Where(p => p.Value == null)
-                .Select(p => p.Key)
-                .ToList();
+            return emptySlots;
         }
 
         public List<Slot> GetSlotsByReferee(Referee referee)
@@ -43,12 +43,18 @@ namespace Diplomka.Solver
         public void AddSlot(Slot slot)
         {
             assignments[slot] = null;
+            emptySlots.Add(slot);
         }
 
         public void RemoveSlot(Slot slot)
         {
-            if (assignments.ContainsKey(slot))
+            if (assignments.TryGetValue(slot, out var existingReferee))
             {
+                if (existingReferee != null)
+                    RemoveFromIndex(existingReferee, slot);
+                else
+                    emptySlots.Remove(slot);
+                
                 assignments.Remove(slot);
             }
         }
@@ -59,15 +65,15 @@ namespace Diplomka.Solver
             {
                 RemoveFromIndex(existingReferee, slot);
                 assignments[slot] = null;
+                emptySlots.Add(slot);
             }
         }
 
         public void SetReferee(Slot slot, Referee? referee)
         {
-            if (!assignments.ContainsKey(slot))
+            if (!assignments.TryGetValue(slot, out var oldReferee))
                 return;
 
-            var oldReferee = assignments[slot];
             if (oldReferee != null)
                 RemoveFromIndex(oldReferee, slot);   
 
@@ -75,11 +81,15 @@ namespace Diplomka.Solver
 
             if (referee != null)
             {
+                emptySlots.Remove(slot);
                 if (!refereeToSlots.ContainsKey(referee))
-                {
                     refereeToSlots[referee] = new List<Slot>();
-                }
+                
                 refereeToSlots[referee].Add(slot);
+            }
+            else
+            {
+                emptySlots.Add(slot);
             }
         }
 
@@ -136,6 +146,8 @@ namespace Diplomka.Solver
             {
                 cloned.refereeToSlots[entry.Key] = new List<Slot>(entry.Value);
             }
+
+            cloned.emptySlots = new HashSet<Slot>(this.emptySlots);
 
             return cloned;
         }
