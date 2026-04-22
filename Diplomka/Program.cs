@@ -49,7 +49,6 @@ var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
 
 var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
 
-Console.WriteLine(allLocations.Count);  
 
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
 await distanceTable.Initialize(allLocations);
@@ -85,7 +84,7 @@ var solver = new BranchAndBoundSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(5)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(10)   // zvyš pro lepší optimum, sniž pro rychlost
 );
 
 HCSolver hc = new HCSolver(
@@ -95,6 +94,7 @@ HCSolver hc = new HCSolver(
 );
 
 State result = solver.Solve(slots);
+
 
 Console.WriteLine();
 Console.WriteLine("Rešení pomocí Branch & Bound:");

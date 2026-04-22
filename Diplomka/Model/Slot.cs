@@ -9,7 +9,6 @@ namespace Diplomka.Model
 {
     public class Slot
     {
-        public int Id {  get; set; }
         public int RequiredRank { get; set; } = 0;
         public Geo? Location { get; set; }
 

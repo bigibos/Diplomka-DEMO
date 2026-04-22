@@ -90,7 +90,7 @@ namespace Diplomka.Solver
             foreach (var slot in slotList)
                 emptyInitial.AddSlot(slot);
 
-            Dfs(emptyInitial, 0.0, slotList);
+            Dfs(emptyInitial, 0.0);
 
             Console.WriteLine($"[B&B] Hotovo. Uzlů: {nodesExplored}, cena: {bestCost:F2}");
             return bestState!;
@@ -130,7 +130,7 @@ namespace Diplomka.Solver
             foreach (var slot in slotList)
                 initialState.AddSlot(slot);
 
-            Dfs(initialState, 0.0, slotList);
+            Dfs(initialState, 0.0);
 
             Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {nodesExplored}, nejlepší cena: {bestCost:F2}");
             return bestState!;
@@ -142,7 +142,7 @@ namespace Diplomka.Solver
          * - V kazdem kroku se vybere slot s nejmensim poctem zpusobilych rozhodcich (MRV - Minimum Remaining Values)
          * - Kandidati pro tento slot jsou serazeni podle ceny (best-first), aby se rychleji dosahovalo lepsich reseni
          */
-        private void Dfs(State state, double totalCost, List<Slot> slots)
+        private void Dfs(State state, double totalCost)
         {
             // Kontrolujeme casove omezeni
             if (DateTime.UtcNow - startTime > _timeLimit)
@@ -166,11 +166,10 @@ namespace Diplomka.Solver
             }
 
             // MRV - slot s nejmensim poctem zpusobilych rozhodcich
-            var mrvSlot = SelectSlotMRV(state, emptySlots);
+            var (mrvSlot, candidateRefs) = SelectSlotMRV(state, emptySlots);
 
             // Serazeni kandidatu podle ceny (best-first)
-            var candidateRefs = _conflictChecker
-                .GetEligibleReferees(state, mrvSlot, _referees)
+            candidateRefs = candidateRefs
                 .OrderBy(r => _costCalculator.AssignmentCost(mrvSlot, r))
                 .ToList();
 
@@ -193,7 +192,7 @@ namespace Diplomka.Solver
                 // Pokud dolni mez je horsi nez aktualni nejlepsi reseni, prohledavame tuto vetvu
                 if (lowerBound < bestCost)
                 {
-                    Dfs(state, newTotalCost, slots);
+                    Dfs(state, newTotalCost);
                 }
 
                 // Backtrack - odstraneni rozhodciho ze slotu pro prohledani dalsich kandidatu
@@ -209,26 +208,27 @@ namespace Diplomka.Solver
          * MRV - Minimum Remaining Values
          * - Vyber slotu s nejmensim poctem zpusobilych rozhodcich
          */
-        private Slot SelectSlotMRV(State state, List<Slot> emptySlots)
+        private (Slot slot, List<Referee> candidates) SelectSlotMRV(State state, List<Slot> emptySlots)
         {
             Slot? best = null;
+            List<Referee> bestCandidates = new List<Referee>();
             int bestCount = int.MaxValue;
 
             foreach (var slot in emptySlots)
             {
-                int count = _conflictChecker
-                    .GetEligibleReferees(state, slot, _referees)
-                    .Count;
+                var candidates = _conflictChecker.GetEligibleReferees(state, slot, _referees);
+                int count = candidates.Count;
 
                 // Nejprve sloty s nejmensim poctem vhodnych rozhodcich, pak sloty s nevyssim pozadovanym rankem
                 if (count < bestCount || (count == bestCount && slot.RequiredRank > (best?.RequiredRank ?? 0)))
                 {
                     bestCount = count;
                     best = slot;
+                    bestCandidates = candidates;
                 }
             }
 
-            return best!;
+            return (best!, bestCandidates);
         }
     }
 }
