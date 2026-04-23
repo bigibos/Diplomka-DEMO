@@ -15,6 +15,7 @@ namespace Diplomka.Solver
         private Dictionary<Referee, List<Slot>> _refereeToSlots = new();
         private HashSet<Slot> _emptySlots = new();
 
+
         public List<Referee?> GetReferees()
         {
             return _assignments.Values.ToList();

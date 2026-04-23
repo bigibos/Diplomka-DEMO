@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Diplomka.Routing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +15,12 @@ namespace Diplomka.ImportExport.Dto
 
         public int Rank { get; set; }
         public int RequiredRank { get; set; }
+        public int RankDiff {  get; set; }
 
-        public double Distance { get; set; }
+        public double TravelDistance { get; set; }
+        public double TravelTime {  get; set; }
+        public string TravelFrom { get; set; } = "";
+        public string TravelTo { get; set; } = "";
+        public bool TravelFromHome { get; set; }
     }
 }

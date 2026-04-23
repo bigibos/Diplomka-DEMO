@@ -63,6 +63,8 @@ namespace Diplomka.Routing
                 double durationSeconds = route.GetProperty("duration").GetDouble();
 
                 return new RouteInfo(
+                    To: other,
+                    From: this,
                     DistanceKm: distanceMeters / 1000,
                     Duration: TimeSpan.FromSeconds(durationSeconds)
                 );
@@ -92,6 +94,14 @@ namespace Diplomka.Routing
         public override string ToString()
         {
             return $"{Lat:F4}, {Lon:F4}";
+        }
+
+        public string ToReadableDecimal()
+        {
+            string latDir = Lat >= 0 ? "N" : "S";
+            string lonDir = Lon >= 0 ? "E" : "W";
+
+            return $"{Math.Abs(Lat):F5}° {latDir}, {Math.Abs(Lon):F5}° {lonDir}";
         }
     }
 }

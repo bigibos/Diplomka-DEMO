@@ -13,11 +13,13 @@ namespace Diplomka.Solver
        
         private readonly SolverConfiguration _config;
         private readonly DistanceTable _distanceTable;
+        private readonly RouteSolver _routeSolver;
 
         public CostCalculator(DistanceTable distanceTable, SolverConfiguration config)
         {
             _config = config;   
             _distanceTable = distanceTable;
+            _routeSolver = new RouteSolver(_distanceTable, _config);
         }
 
         // Vypocet ceny prirazeni rozhodci ke slotu
@@ -32,6 +34,12 @@ namespace Diplomka.Solver
         // Vypocet ceny prirazeni rozhodci ke slotu
         public double AssignmentCost(State state, Slot slot, Referee referee)
         {
+            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
+
+            var route = _routeSolver.ComputeOptimalRoute(state,  slot, referee);
+
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * route.DistanceKm;
+
             // Seřaď existující sloty rozhodčího chronologicky
             var existing = state.GetSlotsByReferee(referee)
                                 .OrderBy(s => s.Start)
@@ -53,17 +61,14 @@ namespace Diplomka.Solver
              * - Veberu tu moznost kde pomer promarneho casu a procestovaneho casu je vetsi
              * -- Pokud je promarneny cas vetsi nez konfiguracni mez, rozhodnu se pro presun domu
              */
-            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
             var timeWindowPrev = prev != null ? (slot.Start - prev.End) : TimeSpan.Zero;
 
             var routePrev = prev != null ? _distanceTable.GetRouteInfo(prev.Location, slot.Location) : null;
             var routeHomePrev = prev != null ? _distanceTable.GetRouteInfo(referee.Location, prev.Location) : null;
             var routeHome = _distanceTable.GetRouteInfo(referee.Location, slot.Location);
-            
-            double distance = 0.0;
 
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * routeHome.DistanceKm;
+            var distance = 0.0;
             if (prev == null)
             {
                 return _config.RankWeight * rankDiff + _config.DistanceWeight * routeHome.DistanceKm;

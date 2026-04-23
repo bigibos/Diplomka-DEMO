@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 namespace Diplomka.Routing
 {
     public record RouteInfo(
+        Geo From,
+        Geo To,
         double DistanceKm,
         TimeSpan Duration
     );

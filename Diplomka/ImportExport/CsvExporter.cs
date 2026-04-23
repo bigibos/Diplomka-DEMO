@@ -44,9 +44,9 @@ namespace Diplomka.ImportExport
             csv.WriteRecords(dtos);
         }
 
-        public static void SaveState(string path, State state)
+        public static void SaveState(string path, State state, RouteSolver routeSolver)
         {
-            var dtos = StateCsvMapper.ToDtoList(state);
+            var dtos = StateCsvMapper.ToDtoList(state, routeSolver);
 
             using var writer = new StreamWriter(path, false, new UTF8Encoding(true));
 

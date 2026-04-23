@@ -26,8 +26,8 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_test.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_test.csv");
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
 
 
 var distanceTable = new DistanceTable();
@@ -50,7 +50,7 @@ var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
 
 var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
 
-
+var routeSolver = new RouteSolver(distanceTable, config);
 
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
 await distanceTable.Initialize(allLocations);
@@ -88,7 +88,7 @@ Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().ToList().Count
 Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
 
-CsvExporter.SaveState($"{rootDirectory}\\result.csv", result);
+CsvExporter.SaveState($"{rootDirectory}\\result.csv", result, routeSolver);
 
 
 Console.WriteLine("##############################################");
@@ -101,7 +101,7 @@ Console.WriteLine("Řešení pomocí Hill Climbing:");
 Console.WriteLine($"Cena: {costCalculator.TotalCost(resultHC)}");
 Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
 
-CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC);
+CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC, routeSolver);
 
 
 

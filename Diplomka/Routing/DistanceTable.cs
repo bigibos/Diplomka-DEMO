@@ -44,6 +44,8 @@ namespace Diplomka.Routing
                     double durationSeconds = durations[i][j].GetDouble();
 
                     result[(locations[i], locations[j])] = new RouteInfo(
+                        From: locations[i],
+                        To: locations[j],
                         DistanceKm: distanceMeters / 1000,
                         Duration: TimeSpan.FromSeconds(durationSeconds)
                     );
@@ -66,7 +68,7 @@ namespace Diplomka.Routing
         public RouteInfo? GetRouteInfo(Geo from, Geo to)
         {
             if (from.Equals(to))
-                return new RouteInfo(0, TimeSpan.Zero); // Stejna lokace, vzdalenost i cas jsou nula
+                return new RouteInfo(from, to, 0, TimeSpan.Zero); // Stejna lokace, vzdalenost i cas jsou nula
 
             if (_distances.TryGetValue((from, to), out var info))
                 return info;
@@ -88,7 +90,7 @@ namespace Diplomka.Routing
                 {
                     var timeInMinutes = from.DistanceTo(to) / 60;
                     // Pokud OSRM nenajde cestu, použijeme vzdušnou vzdálenost jako záložní
-                    routeInfo = new RouteInfo(from.DistanceTo(to), TimeSpan.FromMinutes(timeInMinutes)); // Předpokládejme průměrnou rychlost 60 km/h
+                    routeInfo = new RouteInfo(from, to, from.DistanceTo(to), TimeSpan.FromMinutes(timeInMinutes)); // Předpokládejme průměrnou rychlost 60 km/h
                 }
                 _distances[(from, to)] = routeInfo;
                 return routeInfo;
