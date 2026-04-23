@@ -64,7 +64,7 @@ namespace Diplomka.Routing
 
                 return new RouteInfo(
                     DistanceKm: distanceMeters / 1000,
-                    DurationMinutes: durationSeconds / 60
+                    Duration: TimeSpan.FromSeconds(durationSeconds)
                 );
             }
             catch (Exception ex)

@@ -45,7 +45,7 @@ namespace Diplomka.Routing
 
                     result[(locations[i], locations[j])] = new RouteInfo(
                         DistanceKm: distanceMeters / 1000,
-                        DurationMinutes: durationSeconds / 60
+                        Duration: TimeSpan.FromSeconds(durationSeconds)
                     );
                 }
             }
@@ -66,7 +66,7 @@ namespace Diplomka.Routing
         public RouteInfo? GetRouteInfo(Geo from, Geo to)
         {
             if (from.Equals(to))
-                return new RouteInfo(0, 0); // Stejna lokace, vzdalenost i cas jsou nula
+                return new RouteInfo(0, TimeSpan.Zero); // Stejna lokace, vzdalenost i cas jsou nula
 
             if (_distances.TryGetValue((from, to), out var info))
                 return info;
@@ -86,8 +86,9 @@ namespace Diplomka.Routing
                 var routeInfo = await from.GetRoadRouteToAsync(to);
                 if (routeInfo == null)
                 {
+                    var timeInMinutes = from.DistanceTo(to) / 60;
                     // Pokud OSRM nenajde cestu, použijeme vzdušnou vzdálenost jako záložní
-                    routeInfo = new RouteInfo(from.DistanceTo(to), from.DistanceTo(to) / 60); // Předpokládejme průměrnou rychlost 60 km/h
+                    routeInfo = new RouteInfo(from.DistanceTo(to), TimeSpan.FromMinutes(timeInMinutes)); // Předpokládejme průměrnou rychlost 60 km/h
                 }
                 _distances[(from, to)] = routeInfo;
                 return routeInfo;
@@ -100,7 +101,7 @@ namespace Diplomka.Routing
             string result = "Distance Table:\n";
             foreach (var entry in _distances)
             {
-                result += $"{entry.Key.Item1} -> {entry.Key.Item2}: {entry.Value.DistanceKm:F2} km, {entry.Value.DurationMinutes:F2} min\n";
+                result += $"{entry.Key.Item1} -> {entry.Key.Item2}: {entry.Value.DistanceKm:F2} km, {entry.Value.Duration:F2} min\n";
             }
             return result;
         }

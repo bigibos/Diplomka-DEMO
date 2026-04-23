@@ -16,6 +16,8 @@ namespace Diplomka.Solver
         public TimeSpan HomeReturnMaxGap { get; set; } = TimeSpan.FromHours(12);
         public double HomeReturnScoreThreshold { get; set; } = 30.0;
 
+        public TimeSpan MaxWasteTime { get; set; } = TimeSpan.FromHours(48*4);
+
         // Vahy pro vypocet cen
         public double RankWeight { get; set; } = 1.0;
         public double DistanceWeight { get; set; } = 1.0;

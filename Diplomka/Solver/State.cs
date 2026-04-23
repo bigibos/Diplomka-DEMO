@@ -1,4 +1,5 @@
 ﻿using Diplomka.Entity;
+using Diplomka.Routing;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +14,6 @@ namespace Diplomka.Solver
         private Dictionary<Slot, Referee?> _assignments = new();
         private Dictionary<Referee, List<Slot>> _refereeToSlots = new();
         private HashSet<Slot> _emptySlots = new();
-
 
         public List<Referee?> GetReferees()
         {

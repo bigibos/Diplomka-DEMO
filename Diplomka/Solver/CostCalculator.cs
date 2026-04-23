@@ -30,7 +30,7 @@ namespace Diplomka.Solver
         }
 
         // Vypocet ceny prirazeni rozhodci ke slotu
-        public double AssignmentCost2(State state, Slot slot, Referee referee)
+        public double AssignmentCost(State state, Slot slot, Referee referee)
         {
             // Seřaď existující sloty rozhodčího chronologicky
             var existing = state.GetSlotsByReferee(referee)
@@ -41,9 +41,60 @@ namespace Diplomka.Solver
             var prev = existing.LastOrDefault(s => s.End <= slot.Start);
             var next = existing.FirstOrDefault(s => s.Start >= slot.End);
 
-            var fromLoc = prev?.Location ?? referee.Location;  // domov, pokud žádný předchůdce
-            var toLoc = next?.Location ?? referee.Location;  // domov, pokud žádný následník
-                                                             // (nebo null pokud návrat neuvažuješ)
+
+            /*
+             * Zjistim predchozi a nasledujici slot
+             * Pokud neexistuje, tak misto jeho lokace zvolim lokaci zazemi
+             * Budeme pracovat s pomerem promarneho casu a procestovaneho casu
+             * - Zjistim casove okno mezi sloty (prirazovany slot a sousedni slot)
+             * - Zjistim procestovany cas mezi sloty (prirazovany slot a sousedni slot)
+             * - Zjistim procestovany cas mezi sloty pres zazemi (prirazovany slot a sousedni slot pres zazemi)
+             * -- Cas ze slotu do zazemi + cas ze zazemi do sousedniho slotu
+             * - Veberu tu moznost kde pomer promarneho casu a procestovaneho casu je vetsi
+             * -- Pokud je promarneny cas vetsi nez konfiguracni mez, rozhodnu se pro presun domu
+             */
+            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
+
+            var timeWindowPrev = prev != null ? (slot.Start - prev.End) : TimeSpan.Zero;
+
+            var routePrev = prev != null ? _distanceTable.GetRouteInfo(prev.Location, slot.Location) : null;
+            var routeHomePrev = prev != null ? _distanceTable.GetRouteInfo(referee.Location, prev.Location) : null;
+            var routeHome = _distanceTable.GetRouteInfo(referee.Location, slot.Location);
+            
+            double distance = 0.0;
+
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * routeHome.DistanceKm;
+            if (prev == null)
+            {
+                return _config.RankWeight * rankDiff + _config.DistanceWeight * routeHome.DistanceKm;
+            }
+
+            /*
+             * Waste time oznacuje promarneny cas - cili cas ktery zbyde z casoveho okne po odecteni cestovniho casu
+             * Vybirame vetsi waste time, protoze ten nam zajisti mensi cestovni cas
+             * Pokud je waste time vetsi nez nastavena mez, rozhodneme se pro presun ze zazemi
+             */
+            var homeWasteTime = timeWindowPrev - (routeHomePrev.Duration + routeHome.Duration);
+            var prevWasteTime = timeWindowPrev - routePrev.Duration;
+
+            var wasteTime = homeWasteTime > prevWasteTime ? homeWasteTime : prevWasteTime;
+
+            if (wasteTime > _config.MaxWasteTime)
+            {
+                distance = routeHome.DistanceKm;
+            }
+            distance = routePrev.DistanceKm;
+
+
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
+
+
+
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
+
+            var fromLoc = prev?.Location ?? referee.Location;
+            var toLoc = next?.Location ?? referee.Location;
+
 
             double distIn = _distanceTable.GetRouteInfo(fromLoc, slot.Location).DistanceKm;
             double distOut = _distanceTable.GetRouteInfo(slot.Location, toLoc).DistanceKm;
@@ -51,12 +102,12 @@ namespace Diplomka.Solver
 
             double marginalDistance = distIn + distOut - distSaved;
 
-            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
+            // double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
             return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
         }
 
 
-        public double AssignmentCost(State state, Slot slot, Referee referee)
+        public double AssignmentCost1(State state, Slot slot, Referee referee)
         {
             var existing = state.GetSlotsByReferee(referee)
                                 .OrderBy(s => s.Start)

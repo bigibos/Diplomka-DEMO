@@ -35,7 +35,7 @@ namespace Diplomka.Solver
 
             // Ziskani doby potrebne pro presun mezi sloty
             var route = _distanceTable.GetRouteInfo(first.Location, second.Location);
-            TimeSpan travelTime = TimeSpan.FromMinutes(route.DurationMinutes);
+            TimeSpan travelTime = route.Duration;
 
 
             // Zjistime, kdy je dostupny po skonceni prvniho slotu

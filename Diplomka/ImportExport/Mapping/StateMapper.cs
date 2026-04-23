@@ -26,7 +26,8 @@ namespace Diplomka.ImportExport.Mapping
                     To = slot.End.ToString("dd.MM.yyyy HH:mm"),
                     Rank = referee.Rank,
                     RequiredRank = slot.RequiredRank,
-                    Distance = Math.Round(referee.Location.DistanceTo(slot.Location), 2)
+                    // TODO: Tady musi byt realna vypocitana trasa, jako je v assignment cost (asi brat ze stavu nevim)
+                    Distance = Math.Round(referee.Location.DistanceTo(slot.Location), 2) 
                 });
             }
 

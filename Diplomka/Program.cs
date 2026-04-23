@@ -51,6 +51,7 @@ var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
 var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
 
 
+
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
 await distanceTable.Initialize(allLocations);
 

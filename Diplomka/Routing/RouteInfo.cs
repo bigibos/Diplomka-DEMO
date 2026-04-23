@@ -8,6 +8,6 @@ namespace Diplomka.Routing
 {
     public record RouteInfo(
         double DistanceKm,
-        double DurationMinutes
+        TimeSpan Duration
     );
 }
