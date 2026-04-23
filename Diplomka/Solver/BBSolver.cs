@@ -100,7 +100,7 @@ namespace Diplomka.Solver
         }
 
         /*
-         * Hlavni metod pro spusteni B&B solveru
+         * Hlavni metoda pro spusteni B&B solveru
          */
         public State Solve(IEnumerable<Slot> slots)
         {

@@ -9,18 +9,6 @@ using Diplomka.Routing;
 using System.Net.Http.Headers;
 
 
-/*
- * 
- * TODO: Opravit prekryvani casu
- * Momentalne by to melo kontrolovat dojezdy a cas na pripravu, ale nefunguje to.
- * Rozhodci jsou prirazeni do slotu kde nemaj absolutne sanci se umistit.
- * PRoste je to horsi nez pri jednoduche kontrole prakryvu v predchozi verzi.
- * 
- * NUTNO OPRAVIT
- * 
- * 
- */
-
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
 List<Slot> slots = new List<Slot>();
@@ -35,7 +23,7 @@ var config = new SolverConfiguration()
 {
     DistanceWeight = 1.0,
     RankWeight = 1.0,
-    RefereePostpTime = TimeSpan.FromMinutes(120),
+    RefereePostTime = TimeSpan.FromMinutes(120),
     RefereePrepTime = TimeSpan.FromMinutes(90)
 };
 
@@ -57,7 +45,6 @@ await distanceTable.Initialize(allLocations);
 
 
 Console.WriteLine("Matice vzdáleností hotová.");
-// Console.WriteLine(DistanceTable.GetInstance());
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
@@ -66,7 +53,7 @@ var solver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(15)   // zvyš pro lepší optimum, sniž pro rychlost
+    timeLimit: TimeSpan.FromSeconds(15) // omezeni casu behu B&B
 );
 
 HCSolver hc = new HCSolver(

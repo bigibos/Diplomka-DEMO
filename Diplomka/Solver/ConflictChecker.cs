@@ -40,7 +40,7 @@ namespace Diplomka.Solver
 
             // Zjistime, kdy je dostupny po skonceni prvniho slotu
             DateTime availableTime = first.End
-                .Add(_config.RefereePostpTime)
+                .Add(_config.RefereePostTime)
                 .Add(travelTime)
                 .Add(_config.RefereePrepTime);
 

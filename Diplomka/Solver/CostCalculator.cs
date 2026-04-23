@@ -22,7 +22,10 @@ namespace Diplomka.Solver
             _routeSolver = new RouteSolver(_distanceTable, _config);
         }
 
-        // Vypocet ceny prirazeni rozhodci ke slotu
+        /*
+         * Vypocet ceny prirazeni rozhodciho ke slotu
+         * Vyuziva se primitivni zpusob na vypocet vzdalenosti - vzdy ze zazemi rozhodciho
+         */
         public double AssignmentCost(Slot slot, Referee referee)
         {
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
@@ -31,7 +34,10 @@ namespace Diplomka.Solver
             return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
         }
 
-        // Vypocet ceny prirazeni rozhodci ke slotu
+        /*
+         * Vypocet ceny prirazeni rozhodciho ke slotu
+         * Vyuziva se intuitivnejsi zpusob pro vypocet vzdalenosti s ohledem na sousedni sloty
+         */
         public double AssignmentCost(State state, Slot slot, Referee referee)
         {
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
@@ -39,79 +45,9 @@ namespace Diplomka.Solver
             var route = _routeSolver.ComputeOptimalRoute(state,  slot, referee);
 
             return _config.RankWeight * rankDiff + _config.DistanceWeight * route.DistanceKm;
-
-            // Seřaď existující sloty rozhodčího chronologicky
-            var existing = state.GetSlotsByReferee(referee)
-                                .OrderBy(s => s.Start)
-                                .ToList();
-
-            // Najdi sousedy v časové sekvenci
-            var prev = existing.LastOrDefault(s => s.End <= slot.Start);
-            var next = existing.FirstOrDefault(s => s.Start >= slot.End);
-
-
-            /*
-             * Zjistim predchozi a nasledujici slot
-             * Pokud neexistuje, tak misto jeho lokace zvolim lokaci zazemi
-             * Budeme pracovat s pomerem promarneho casu a procestovaneho casu
-             * - Zjistim casove okno mezi sloty (prirazovany slot a sousedni slot)
-             * - Zjistim procestovany cas mezi sloty (prirazovany slot a sousedni slot)
-             * - Zjistim procestovany cas mezi sloty pres zazemi (prirazovany slot a sousedni slot pres zazemi)
-             * -- Cas ze slotu do zazemi + cas ze zazemi do sousedniho slotu
-             * - Veberu tu moznost kde pomer promarneho casu a procestovaneho casu je vetsi
-             * -- Pokud je promarneny cas vetsi nez konfiguracni mez, rozhodnu se pro presun domu
-             */
-
-            var timeWindowPrev = prev != null ? (slot.Start - prev.End) : TimeSpan.Zero;
-
-            var routePrev = prev != null ? _distanceTable.GetRouteInfo(prev.Location, slot.Location) : null;
-            var routeHomePrev = prev != null ? _distanceTable.GetRouteInfo(referee.Location, prev.Location) : null;
-            var routeHome = _distanceTable.GetRouteInfo(referee.Location, slot.Location);
-
-            var distance = 0.0;
-            if (prev == null)
-            {
-                return _config.RankWeight * rankDiff + _config.DistanceWeight * routeHome.DistanceKm;
-            }
-
-            /*
-             * Waste time oznacuje promarneny cas - cili cas ktery zbyde z casoveho okne po odecteni cestovniho casu
-             * Vybirame vetsi waste time, protoze ten nam zajisti mensi cestovni cas
-             * Pokud je waste time vetsi nez nastavena mez, rozhodneme se pro presun ze zazemi
-             */
-            var homeWasteTime = timeWindowPrev - (routeHomePrev.Duration + routeHome.Duration);
-            var prevWasteTime = timeWindowPrev - routePrev.Duration;
-
-            var wasteTime = homeWasteTime > prevWasteTime ? homeWasteTime : prevWasteTime;
-
-            if (wasteTime > _config.MaxWasteTime)
-            {
-                distance = routeHome.DistanceKm;
-            }
-            distance = routePrev.DistanceKm;
-
-
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
-
-
-
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
-
-            var fromLoc = prev?.Location ?? referee.Location;
-            var toLoc = next?.Location ?? referee.Location;
-
-
-            double distIn = _distanceTable.GetRouteInfo(fromLoc, slot.Location).DistanceKm;
-            double distOut = _distanceTable.GetRouteInfo(slot.Location, toLoc).DistanceKm;
-            double distSaved = _distanceTable.GetRouteInfo(fromLoc, toLoc).DistanceKm;
-
-            double marginalDistance = distIn + distOut - distSaved;
-
-            // double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
         }
 
-
+        // TODO: Asi do budoucna nevyuzitelna vec - pozdeji smazat
         public double AssignmentCost1(State state, Slot slot, Referee referee)
         {
             var existing = state.GetSlotsByReferee(referee)
@@ -144,10 +80,8 @@ namespace Diplomka.Solver
             return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
         }
 
-        /// <summary>
-        /// Rozhodne, jestli se rozhodčí přesune přímo (from→to) nebo přes domov (from→home→to).
-        /// Vrátí délku zvoleného úseku.
-        /// </summary>
+
+        // TODO: Taky do budoucna smazat - patri nepouzivane AssignmentCost1
         private double ComputeLegDistance(
             Geo from,
             Geo to,
@@ -182,7 +116,10 @@ namespace Diplomka.Solver
             return Math.Min(directDistance, viaHomeDistance);
         }
 
-        // Vypocet ceny celehoho stavu
+        /*
+         * Vypocet ceny celeho stavu
+         * TODO: Upravit s vyuzitim noveho RouteSolveru
+         */
         public double TotalCost(State state)
         {
             double total = 0;
@@ -203,7 +140,7 @@ namespace Diplomka.Solver
                 foreach (var slot in slots)
                     total += _config.RankWeight * Math.Abs(slot.RequiredRank - referee.Rank);
 
-                // Skutečná trasa: domov → slot1 → slot2 → ... → domov
+                // Skutecna trasa
                 var locs = new List<Geo> { referee.Location };
                 locs.AddRange(slots.Select(s => s.Location));
                 locs.Add(referee.Location);
