@@ -1,5 +1,6 @@
 using Diplomka.Entity;
 using Diplomka.Routing;
+using System.Collections.Generic;
 
 namespace Diplomka.Solver
 {
@@ -58,11 +59,33 @@ namespace Diplomka.Solver
         public double TotalCost(State state)
         {
             double total = 0;
-            foreach (var (slot, referee) in state)
+
+            var byReferee = state
+                .Where(kv => kv.Value != null)
+                .GroupBy(kv => kv.Value!);
+
+            foreach (var group in byReferee)
             {
-                if (referee != null)
-                    total += AssignmentCost(slot, referee);
+                var referee = group.Key;
+                var slots = group
+                    .Select(kv => kv.Key)
+                    .OrderBy(s => s.Start)
+                    .ToList();
+
+                // Rank rozdíl
+                foreach (var slot in slots)
+                    total += _config.RankWeight * Math.Abs(slot.RequiredRank - referee.Rank);
+
+                // Skutečná trasa: domov → slot1 → slot2 → ... → domov
+                var locs = new List<Geo> { referee.Location };
+                locs.AddRange(slots.Select(s => s.Location));
+                locs.Add(referee.Location);
+
+                for (int i = 0; i < locs.Count - 1; i++)
+                    total += _config.DistanceWeight
+                             * _distanceTable.GetRouteInfo(locs[i], locs[i + 1]).DistanceKm;
             }
+
             return total;
         }
 
