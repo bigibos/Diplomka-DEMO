@@ -26,8 +26,8 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_test.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_test.csv");
 
 
 var distanceTable = new DistanceTable();

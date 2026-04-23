@@ -30,7 +30,7 @@ namespace Diplomka.Solver
         }
 
         // Vypocet ceny prirazeni rozhodci ke slotu
-        public double AssignmentCost(State state, Slot slot, Referee referee)
+        public double AssignmentCost2(State state, Slot slot, Referee referee)
         {
             // Seřaď existující sloty rozhodčího chronologicky
             var existing = state.GetSlotsByReferee(referee)
@@ -53,6 +53,77 @@ namespace Diplomka.Solver
 
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
             return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
+        }
+
+
+        public double AssignmentCost(State state, Slot slot, Referee referee)
+        {
+            var existing = state.GetSlotsByReferee(referee)
+                                .OrderBy(s => s.Start)
+                                .ToList();
+
+            var prev = existing.LastOrDefault(s => s.End <= slot.Start);
+            var next = existing.FirstOrDefault(s => s.Start >= slot.End);
+
+            double distIn = ComputeLegDistance(prev?.Location ?? referee.Location,
+                                                slot.Location,
+                                                prev?.End,
+                                                slot.Start,
+                                                referee.Location);
+
+            double distOut = ComputeLegDistance(slot.Location,
+                                                next?.Location ?? referee.Location,
+                                                slot.End,
+                                                next?.Start,
+                                                referee.Location);
+
+            // Úspora oproti přímé trase prev→next (marginální přírůstek)
+            double distSaved = _distanceTable.GetRouteInfo(
+                prev?.Location ?? referee.Location,
+                next?.Location ?? referee.Location).DistanceKm;
+
+            double marginalDistance = distIn + distOut - distSaved;
+
+            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
+            return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
+        }
+
+        /// <summary>
+        /// Rozhodne, jestli se rozhodčí přesune přímo (from→to) nebo přes domov (from→home→to).
+        /// Vrátí délku zvoleného úseku.
+        /// </summary>
+        private double ComputeLegDistance(
+            Geo from,
+            Geo to,
+            DateTime? departureTime,
+            DateTime? arrivalTime,
+            Geo home)
+        {
+            double directDistance = _distanceTable.GetRouteInfo(from, to).DistanceKm;
+            double viaHomeDistance = _distanceTable.GetRouteInfo(from, home).DistanceKm
+                                   + _distanceTable.GetRouteInfo(home, to).DistanceKm;
+
+            if (directDistance == 0 && viaHomeDistance == 0) return 0;
+
+            // Absolutní pravidlo: velká mezera → vždy domů
+            bool absoluteReturn = departureTime.HasValue && arrivalTime.HasValue
+                && (arrivalTime.Value - departureTime.Value) >= _config.HomeReturnMaxGap;
+
+            if (absoluteReturn)
+                return viaHomeDistance;
+
+            // Poměrové rozhodnutí: mezera (min) / (přímá vzdálenost + 1)
+            if (departureTime.HasValue && arrivalTime.HasValue)
+            {
+                double gapMinutes = (arrivalTime.Value - departureTime.Value).TotalMinutes;
+                double score = gapMinutes / (directDistance + 1);
+
+                if (score >= _config.HomeReturnScoreThreshold)
+                    return viaHomeDistance;
+            }
+
+            // Výchozí: kratší trasa vyhrává
+            return Math.Min(directDistance, viaHomeDistance);
         }
 
         // Vypocet ceny celehoho stavu
