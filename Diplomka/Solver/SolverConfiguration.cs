@@ -29,5 +29,10 @@ namespace Diplomka.Solver
          */
         public double RankWeight { get; set; } = 1.0;
         public double DistanceWeight { get; set; } = 1.0;
+
+        /*
+         * Velka cena pro nevyplneny slot
+         */
+        public double UnassignedCost { get; set; } = 1000;
     }
 }

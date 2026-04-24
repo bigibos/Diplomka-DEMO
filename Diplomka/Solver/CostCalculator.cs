@@ -26,7 +26,7 @@ namespace Diplomka.Solver
          * Vypocet ceny prirazeni rozhodciho ke slotu
          * Vyuziva se primitivni zpusob na vypocet vzdalenosti - vzdy ze zazemi rozhodciho
          */
-        public double AssignmentCost(Slot slot, Referee referee)
+        public double AssignmentCost(Slot slot, Referee? referee)
         {
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
@@ -38,8 +38,11 @@ namespace Diplomka.Solver
          * Vypocet ceny prirazeni rozhodciho ke slotu
          * Vyuziva se intuitivnejsi zpusob pro vypocet vzdalenosti s ohledem na sousedni sloty
          */
-        public double AssignmentCost(State state, Slot slot, Referee referee)
+        public double AssignmentCost(State state, Slot slot, Referee? referee)
         {
+            if (referee == null)
+                return _config.UnassignedCost;
+
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
             var route = _routeSolver.ComputeOptimalRoute(state,  slot, referee);
@@ -122,35 +125,12 @@ namespace Diplomka.Solver
          */
         public double TotalCost(State state)
         {
-            double total = 0;
+            double totalCost = 0;
 
-            var byReferee = state
-                .Where(kv => kv.Value != null)
-                .GroupBy(kv => kv.Value!);
+            foreach (var (slot, referee) in state)
+                totalCost += AssignmentCost(state, slot, referee);
 
-            foreach (var group in byReferee)
-            {
-                var referee = group.Key;
-                var slots = group
-                    .Select(kv => kv.Key)
-                    .OrderBy(s => s.Start)
-                    .ToList();
-
-                // Rank rozdíl
-                foreach (var slot in slots)
-                    total += _config.RankWeight * Math.Abs(slot.RequiredRank - referee.Rank);
-
-                // Skutecna trasa
-                var locs = new List<Geo> { referee.Location };
-                locs.AddRange(slots.Select(s => s.Location));
-                locs.Add(referee.Location);
-
-                for (int i = 0; i < locs.Count - 1; i++)
-                    total += _config.DistanceWeight
-                             * _distanceTable.GetRouteInfo(locs[i], locs[i + 1]).DistanceKm;
-            }
-
-            return total;
+            return totalCost;
         }
 
         // Vypocet dolni meze pro neohodnocene sloty v danem stavu.
@@ -160,7 +140,7 @@ namespace Diplomka.Solver
             IReadOnlyList<Referee> referees,
             ConflictChecker conflictChecker)
         {
-            double lb = 0;
+            double lowerBound = 0;
             foreach (var slot in emptySlots)
             {
                 double minCost = double.MaxValue;
@@ -180,9 +160,9 @@ namespace Diplomka.Solver
                 if (minCost == double.MaxValue)
                     return 1_000_000; // Okamžitý pruning
 
-                lb += minCost;
+                lowerBound += minCost;
             }
-            return lb;
+            return lowerBound;
         }
 
         // Vypocet dolni meze pro neohodnocene sloty bez ohledu na konflikt s ostatnimi sloty
