@@ -89,6 +89,7 @@ namespace Diplomka.Solver
                 {
                     _bestState = (State)currentState.Clone();
                     _bestCost = currentCost;
+                    Console.WriteLine($"[HC] Nalezena nová nejlepší cena: {_bestCost:F2}");
                 }
             }
 

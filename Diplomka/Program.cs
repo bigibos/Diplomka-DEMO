@@ -18,7 +18,11 @@ slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
 referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
 
 
-var distanceTable = new DistanceTable();
+Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
+
+/*
+ * Hlavni konfigurace
+ */
 var config = new SolverConfiguration()
 {
     MaxWasteTime = TimeSpan.FromHours(4),
@@ -30,55 +34,52 @@ var config = new SolverConfiguration()
     UnderRankFactor = 1.0
 };
 
-var conflictChecker = new ConflictChecker(distanceTable, config);
-var costCalculator = new CostCalculator(distanceTable, config);
-
-var fs = new FileStorage();
-
-
+/*
+ * Geolokace a budovani tabulky tras
+ */
 var slotLocations = slots.Select(s => s.Location).Distinct().ToList();
 var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
-
 var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
-
-var routeSolver = new RouteSolver(distanceTable, config);
+var distanceTable = new DistanceTable();
 
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
 await distanceTable.Initialize(allLocations);
 
-
-Console.WriteLine("Matice vzdáleností hotová.");
-
-Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
+var routeSolver = new RouteSolver(distanceTable, config);
 
 
-var solver = new BBSolver(
+// var fs = new FileStorage(); // Pro ukladani
+var conflictChecker = new ConflictChecker(distanceTable, config);
+var costCalculator = new CostCalculator(distanceTable, config);
+
+
+BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(60) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(240) // omezeni casu behu B&B
 );
 
-HCSolver hc = new HCSolver(
+HCSolver hcSolver = new HCSolver(
     referees,
     conflictChecker,
     costCalculator
 );
+
 Stopwatch sw = new Stopwatch();
 
 sw.Restart();
-State result = solver.Solve(slots);
+State resultBB = bbSolver.Solve(slots);
 sw.Stop(); 
 
-
-Console.WriteLine();
 Console.WriteLine("Rešení pomocí Branch & Bound:");
-Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(result):F2}");
-Console.WriteLine($"Prázdné sloty:      {result.GetEmptySlots().ToList().Count}");
-Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
-Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
+Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(resultBB):F2}");
+Console.WriteLine($"Prázdné sloty:      {resultBB.GetEmptySlots().ToList().Count}");
+Console.WriteLine($"Prozkoumáno uzlů:   {bbSolver.NodesExplored}");
+Console.WriteLine($"Hotovo za:          {sw.ElapsedMilliseconds} ms");
 
-CsvExporter.SaveState($"{rootDirectory}\\result.csv", result, routeSolver);
+CsvExporter.SaveState($"{rootDirectory}\\result.csv", resultBB, routeSolver);
+
 /*
 Console.WriteLine("Spoustim week solver");
 var weekSolver = new WeeklyDecompositionSolver(referees, conflictChecker, costCalculator);
@@ -92,23 +93,20 @@ Console.WriteLine("Řešení pomocí Weekly B&B:");
 Console.WriteLine($"Cena: {costCalculator.TotalCost(result)}");
 */
 
-// Paralelní
 
 
-Console.WriteLine("##############################################");
+Console.WriteLine("\n--------------------------------------------------\n");
 
 sw.Restart();
-State resultHC = hc.Solve(slots);
+State resultHC = hcSolver.Solve(slots);
 sw.Stop();
 
 Console.WriteLine("Řešení pomocí Hill Climbing:");
-Console.WriteLine($"Cena: {costCalculator.TotalCost(resultHC)}");
-Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
+Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(resultHC):F2}");
+Console.WriteLine($"Prázdné sloty:      {resultHC.GetEmptySlots().ToList().Count}");
+Console.WriteLine($"Hotovo za:          {sw.ElapsedMilliseconds} ms");
 
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC, routeSolver);
 
 
-
-Console.WriteLine("Hotovo, stiskněte Enter pro ukončení.");
-Console.ReadKey();
 
