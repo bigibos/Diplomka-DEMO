@@ -179,17 +179,18 @@ namespace Diplomka.Solver
             var (mrvSlot, candidateRefs) = SelectSlotMRV(state, emptySlots);
 
             // Serazeni kandidatu podle ceny (best-first)
-            candidateRefs = candidateRefs
-                .OrderBy(r => _costCalculator.AssignmentCost(state, mrvSlot, r))
+            var candidatesWithCost = candidateRefs
+                .Select(r => (Referee: r, Cost: _costCalculator.AssignmentCost(state, mrvSlot, r)))
+                .OrderBy(x => x.Cost)
                 .ToList();
 
             // Pruning - neni zadny vhodny rozhodci
             if (candidateRefs.Count == 0)
                 return;
 
-            foreach (var referee in candidateRefs)
+            foreach (var (referee, assignmentCost) in candidatesWithCost)
             {
-                double assignmentCost = _costCalculator.AssignmentCost(state, mrvSlot, referee);
+                // double assignmentCost = _costCalculator.AssignmentCost(state, mrvSlot, referee);
                 double newTotalCost = totalCost + assignmentCost;
 
                 // Nastaveni rozhodciho ke slotu

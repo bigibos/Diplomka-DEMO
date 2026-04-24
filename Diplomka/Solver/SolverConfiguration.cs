@@ -22,13 +22,15 @@ namespace Diplomka.Solver
          * Maximalni mozny promarneny cas
          * Vyuziva se k rozhodovani, jestli bude rozhodci cestovat ze sveho zazemi, nebo z akt. slotu
          */
-        public TimeSpan MaxWasteTime { get; set; } = TimeSpan.FromHours(6);
+        public TimeSpan MaxWasteTime { get; set; } = TimeSpan.FromHours(4);
 
         /*
          * Vahove koeficienty manipulaci pocitane ceny
          */
-        public double RankWeight { get; set; } = 1.0;
-        public double DistanceWeight { get; set; } = 1.0;
+        public double RankFactor { get; set; } = 1.0; // Jakou vahu rozdil v urovni
+        public double DistanceFactor { get; set; } = 1.0; // Jakou vahu ma vzdalenost
+        public double UnderRankFactor { get; set; } = 1.0; // Jakou vahu ma nekvalifikovanost
+        public double OverRankFactor { get; set; } = 1.0; // Jakou vahu ma prekvalifikovanost
 
         /*
          * Velka cena pro nevyplneny slot

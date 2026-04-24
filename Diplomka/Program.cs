@@ -21,10 +21,13 @@ referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
 var distanceTable = new DistanceTable();
 var config = new SolverConfiguration()
 {
-    DistanceWeight = 1.0,
-    RankWeight = 1.0,
+    MaxWasteTime = TimeSpan.FromHours(4),
     RefereePostTime = TimeSpan.FromMinutes(120),
-    RefereePrepTime = TimeSpan.FromMinutes(90)
+    RefereePrepTime = TimeSpan.FromMinutes(90),
+    DistanceFactor = 1.0,
+    RankFactor = 1.0,
+    OverRankFactor = 1.0,
+    UnderRankFactor = 1.0
 };
 
 var conflictChecker = new ConflictChecker(distanceTable, config);
@@ -53,7 +56,7 @@ var solver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(60) // omezeni casu behu B&B
 );
 
 HCSolver hc = new HCSolver(
@@ -61,8 +64,8 @@ HCSolver hc = new HCSolver(
     conflictChecker,
     costCalculator
 );
-
 Stopwatch sw = new Stopwatch();
+
 sw.Restart();
 State result = solver.Solve(slots);
 sw.Stop(); 
@@ -76,6 +79,20 @@ Console.WriteLine($"Prozkoumáno uzlů:   {solver.NodesExplored}");
 Console.WriteLine($"Hotovo za: {sw.ElapsedMilliseconds} ms");
 
 CsvExporter.SaveState($"{rootDirectory}\\result.csv", result, routeSolver);
+/*
+Console.WriteLine("Spoustim week solver");
+var weekSolver = new WeeklyDecompositionSolver(referees, conflictChecker, costCalculator);
+sw.Restart();
+State result = weekSolver.Solve(slots);
+sw.Stop();
+// State result = await weekSolver.RunParallelAsync(slots);
+CsvExporter.SaveState($"{rootDirectory}\\result.csv", result, routeSolver);
+
+Console.WriteLine("Řešení pomocí Weekly B&B:");
+Console.WriteLine($"Cena: {costCalculator.TotalCost(result)}");
+*/
+
+// Paralelní
 
 
 Console.WriteLine("##############################################");

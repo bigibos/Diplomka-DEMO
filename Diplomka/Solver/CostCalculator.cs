@@ -31,7 +31,7 @@ namespace Diplomka.Solver
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
             double distance = _distanceTable.GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * distance;
+            return _config.RankFactor * rankDiff + _config.DistanceFactor * distance;
         }
 
         /*
@@ -45,9 +45,12 @@ namespace Diplomka.Solver
 
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
+            if (rankDiff != 0)
+                rankDiff *= referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
+
             var route = _routeSolver.ComputeOptimalRoute(state,  slot, referee);
 
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * route.DistanceKm;
+            return _config.RankFactor * rankDiff + _config.DistanceFactor * route.DistanceKm;
         }
 
         // TODO: Asi do budoucna nevyuzitelna vec - pozdeji smazat
@@ -80,7 +83,7 @@ namespace Diplomka.Solver
             double marginalDistance = distIn + distOut - distSaved;
 
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
-            return _config.RankWeight * rankDiff + _config.DistanceWeight * marginalDistance;
+            return _config.RankFactor * rankDiff + _config.DistanceFactor * marginalDistance;
         }
 
 
@@ -121,7 +124,6 @@ namespace Diplomka.Solver
 
         /*
          * Vypocet ceny celeho stavu
-         * TODO: Upravit s vyuzitim noveho RouteSolveru
          */
         public double TotalCost(State state)
         {
