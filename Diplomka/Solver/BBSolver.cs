@@ -150,7 +150,7 @@ namespace Diplomka.Solver
         {
             _nodesExplored++;
 
-            if (_nodesExplored % 500 == 0)
+            if (_nodesExplored % 200 == 0)
             {
                 // Kontrolujeme casove omezeni
                 if (DateTime.UtcNow - _startTime > _timeLimit)

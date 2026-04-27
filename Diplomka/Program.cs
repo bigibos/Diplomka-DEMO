@@ -8,14 +8,29 @@ using System.Runtime.ExceptionServices;
 using Diplomka.Routing;
 using System.Net.Http.Headers;
 
+/*
+ * TODO: Opravit
+ * 
+ * Pro vstupni data slots_comb.csv a referees_comb.csv
+ * Pro dleis casy na pripravu a uklid
+ * Vraci unfeasable reseni (sloty zustavaji neobsazeny) bez ohledu na naroky na cenu
+ * Zaroven je s takovym objemem dat B&B pomerne pomaly - mala sance nalezeni lepsiho reseni
+ * 
+ * Pokud je to mozne (coz by u techto dat a parametru snad melo) musi byt vraceno minimalne feasable reseni - bez cas. kolizi
+ * Mozne nedostatky greedy alg. nebo opravneho alg.
+ * Bylo by mozna dobre analyticky orezat vstupni mnozinu rozhodcich, aby byla co nejmensi ale zaroven pouzitelna (MOZNA)
+ * 
+ */
+
+
 
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees.csv");
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb.csv");
 
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
@@ -25,11 +40,11 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
  */
 var config = new SolverConfiguration()
 {
-    MaxWasteTime = TimeSpan.FromHours(4),
-    RefereePostTime = TimeSpan.FromMinutes(120),
-    RefereePrepTime = TimeSpan.FromMinutes(90),
+    MaxWasteTime = TimeSpan.FromHours(6),
+    RefereePostTime = TimeSpan.FromMinutes(30),
+    RefereePrepTime = TimeSpan.FromMinutes(30),
     DistanceFactor = 1.0,
-    RankFactor = 1.0,
+    RankFactor = 0.0,
     OverRankFactor = 1.0,
     UnderRankFactor = 1.0
 };
@@ -48,7 +63,6 @@ await distanceTable.Initialize(allLocations);
 var routeSolver = new RouteSolver(distanceTable, config);
 
 
-// var fs = new FileStorage(); // Pro ukladani
 var conflictChecker = new ConflictChecker(distanceTable, config);
 var costCalculator = new CostCalculator(distanceTable, config);
 
@@ -57,7 +71,7 @@ BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(240) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(

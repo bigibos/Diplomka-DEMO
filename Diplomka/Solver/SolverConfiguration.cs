@@ -14,9 +14,6 @@ namespace Diplomka.Solver
         public TimeSpan RefereePrepTime { get; set; } = TimeSpan.FromMinutes(90);
         public TimeSpan RefereePostTime { get; set;} = TimeSpan.FromMinutes(120);
 
-        // TODO: Nasledujici oba configy se budou mazat - vazba na vypocty, ktere se nepouzivaji
-        public TimeSpan HomeReturnMaxGap { get; set; } = TimeSpan.FromHours(12);
-        public double HomeReturnScoreThreshold { get; set; } = 30.0;
 
         /*
          * Maximalni mozny promarneny cas
