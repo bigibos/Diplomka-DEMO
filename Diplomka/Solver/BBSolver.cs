@@ -180,7 +180,8 @@ namespace Diplomka.Solver
             }
 
             // MRV - slot s nejmensim poctem zpusobilych rozhodcich
-            var (mrvSlot, candidateRefs) = SelectSlotMRV(state, emptySlots);
+            // var (mrvSlot, candidateRefs) = SelectSlotMRV(state, emptySlots);
+            var mrvSlot = _candidateTable.GetHardestSlot(state);
 
             // Serazeni kandidatu podle ceny (best-first)
             /*
@@ -190,17 +191,24 @@ namespace Diplomka.Solver
                 .ToList();
             */
 
-            var candidates = _candidateTable.GetCandidatesWithCosts(mrvSlot);
-            
+            // var candidates = _candidateTable.GetCandidatesWithCosts(mrvSlot);
+            var candidates = _candidateTable.GetBestCandidatesWithCosts(state, mrvSlot);
+
+
 
             // Pruning - neni zadny vhodny rozhodci
-            if (candidateRefs.Count == 0)
+            if (candidates.Count == 0)
                 return;
 
             foreach (var (referee, assignmentCost) in candidates)
             {
+                // Kolize, nejde priradit
+                if (!_conflictChecker.CanAssign(state, mrvSlot, referee))
+                    continue;
+
                 // double assignmentCost = _costCalculator.AssignmentCost(state, mrvSlot, referee);
                 double newTotalCost = totalCost + assignmentCost;
+
 
                 // Nastaveni rozhodciho ke slotu
                 state.SetReferee(mrvSlot, referee);

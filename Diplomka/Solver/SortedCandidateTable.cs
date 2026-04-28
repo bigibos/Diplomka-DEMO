@@ -32,6 +32,18 @@ namespace Diplomka.Solver
             return candidates;
         }
 
+        public List<(Referee Referee, double Cost)> GetBestCandidatesWithCosts(State state, Slot slot)
+        {
+            _sortedCandidates.TryGetValue(slot, out var candidates);
+
+            if (candidates == null)
+                return new List<(Referee Referee, double Cost)>();
+
+            candidates = candidates.Where(c => _conflictChecker.CanAssign(state, slot, c.Referee)).ToList();
+
+            return candidates;
+        }
+
         /*
          * Ziska kadnidata ze seznamu
          * Vychozi je prvni kandidat - s nejlepsi cenou
@@ -46,6 +58,30 @@ namespace Diplomka.Solver
             var candidate = candidates[index].Referee;
 
             return candidate;
+        }
+
+        public Slot? GetHardestSlot(State state)
+        {
+            var record = _sortedCandidates.MinBy(s => GetBestCandidatesWithCosts(state, s.Key).Count);
+
+            return record.Key;
+        }
+
+ 
+
+        public Referee? GetWorstCandidate(State state, Slot slot)
+        {
+            _sortedCandidates.TryGetValue(slot, out var candidates);
+
+            if (candidates == null)
+                return null;
+
+            for (int i = candidates.Count; i >= 0; i--)
+                if (_conflictChecker.CanAssign(state, slot, candidates[i].Referee))
+                    return candidates[i].Referee;
+
+
+            return null;
         }
 
         /*
