@@ -181,7 +181,7 @@ namespace Diplomka.Solver
 
             // MRV - slot s nejmensim poctem zpusobilych rozhodcich
             // var (mrvSlot, candidateRefs) = SelectSlotMRV(state, emptySlots);
-            var mrvSlot = _candidateTable.GetHardestSlot(state);
+            // var mrvSlot = _candidateTable.GetHardestSlot(state);
 
             // Serazeni kandidatu podle ceny (best-first)
             /*
@@ -192,9 +192,12 @@ namespace Diplomka.Solver
             */
 
             // var candidates = _candidateTable.GetCandidatesWithCosts(mrvSlot);
-            var candidates = _candidateTable.GetBestCandidatesWithCosts(state, mrvSlot);
+            // var candidates = _candidateTable.GetBestCandidatesWithCosts(state, mrvSlot);
 
-
+            var hardest = _candidateTable.GetHardestSelection(state);
+            var mrvSlot = hardest.Slot;
+            var candidates = hardest.Candidates;
+            
 
             // Pruning - neni zadny vhodny rozhodci
             if (candidates.Count == 0)

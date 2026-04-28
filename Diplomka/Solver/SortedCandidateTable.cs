@@ -2,19 +2,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Headers;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Diplomka.Solver
 {
     public class SortedCandidateTable
     {
+        // Pomocná statická kolekce pro úsporu paměti
+        private static readonly List<(Referee Referee, double Cost)> _emptyList = new(0);
+
         private Dictionary<Slot, List<(Referee Referee, double Cost)>> _sortedCandidates = new();
 
-        private CostCalculator _costCalculator;
-        private ConflictChecker _conflictChecker;
+        private readonly CostCalculator _costCalculator;
+        private readonly ConflictChecker _conflictChecker;
 
         public SortedCandidateTable(CostCalculator costCalculator, ConflictChecker conflictChecker)
         {
@@ -22,122 +21,108 @@ namespace Diplomka.Solver
             _conflictChecker = conflictChecker;
         }
 
+        /// <summary>
+        /// Vrátí předpočítaný seznam kandidátů pro daný slot bez ohledu na aktuální stav (kolize).
+        /// </summary>
         public List<(Referee Referee, double Cost)> GetCandidatesWithCosts(Slot slot)
         {
-            _sortedCandidates.TryGetValue(slot, out var candidates);
-
-            if (candidates == null)
-                return new List<(Referee Referee, double Cost)>();
-
-            return candidates;
+            return _sortedCandidates.TryGetValue(slot, out var candidates) ? candidates : _emptyList;
         }
 
+        /// <summary>
+        /// Vrátí pouze ty kandidáty, kteří mohou být v daném stavu přiřazeni (využívá tvůj ConflictChecker).
+        /// </summary>
         public List<(Referee Referee, double Cost)> GetBestCandidatesWithCosts(State state, Slot slot)
         {
-            _sortedCandidates.TryGetValue(slot, out var candidates);
+            var allCandidates = GetCandidatesWithCosts(slot);
+            if (allCandidates.Count == 0) return _emptyList;
 
-            if (candidates == null)
-                return new List<(Referee Referee, double Cost)>();
-
-            candidates = candidates.Where(c => _conflictChecker.CanAssign(state, slot, c.Referee)).ToList();
-
-            return candidates;
+            // Použijeme tvůj ConflictChecker.CanAssign, který kontroluje jak rank, tak časové překryvy
+            return allCandidates
+                .Where(c => _conflictChecker.CanAssign(state, slot, c.Referee))
+                .ToList();
         }
 
-        /*
-         * Ziska kadnidata ze seznamu
-         * Vychozi je prvni kandidat - s nejlepsi cenou
-         */
-        public Referee? GetCandidate(Slot slot, int index = 0)
+        /// <summary>
+        /// MRV Heuristika: Najde nejtěžší slot z prázdných slotů a vrátí ho i s jeho volnými kandidáty.
+        /// </summary>
+        public (Slot? Slot, List<(Referee Referee, double Cost)> Candidates) GetHardestSelection(State state)
         {
-            _sortedCandidates.TryGetValue(slot, out var candidates);
+            var emptySlots = state.GetEmptySlots();
+            Slot? bestSlot = null;
+            List<(Referee, double)>? bestCandidates = null;
+            int minCount = int.MaxValue;
 
-            if (candidates == null || index >= candidates.Count)
-                return null;
+            foreach (var slot in emptySlots)
+            {
+                // Získáme kandidáty, kteří v tomto uzlu stromu nemají kolizi
+                var availableCandidates = GetBestCandidatesWithCosts(state, slot);
+                int count = availableCandidates.Count;
 
-            var candidate = candidates[index].Referee;
+                // MRV: Slot s nejmenším počtem možností je prioritní
+                if (count < minCount || (count == minCount && slot.RequiredRank > (bestSlot?.RequiredRank ?? 0)))
+                {
+                    minCount = count;
+                    bestSlot = slot;
+                    bestCandidates = availableCandidates;
+                }
 
-            return candidate;
+                // Pokud narazíme na slot, který nejde obsadit, okamžitě končíme (Pruning)
+                if (count == 0) break;
+            }
+
+            return (bestSlot, bestCandidates ?? _emptyList);
         }
 
-        public Slot? GetHardestSlot(State state)
-        {
-            var record = _sortedCandidates.MinBy(s => GetBestCandidatesWithCosts(state, s.Key).Count);
-
-            return record.Key;
-        }
-
- 
-
-        public Referee? GetWorstCandidate(State state, Slot slot)
-        {
-            _sortedCandidates.TryGetValue(slot, out var candidates);
-
-            if (candidates == null)
-                return null;
-
-            for (int i = candidates.Count; i >= 0; i--)
-                if (_conflictChecker.CanAssign(state, slot, candidates[i].Referee))
-                    return candidates[i].Referee;
-
-
-            return null;
-        }
-
-        /*
-         * Najde nejlepsiho kandidate
-         * Postupne prohledava nevhodnejsi kandidaty serazene podle ceny
-         * Prvni kadnidat, ktery muze byt prirazen (neexistuje kolize) je vybran
-         */
+        /// <summary>
+        /// Vybere prvního (nejlevnějšího) kandidáta, který splňuje podmínky ConflictCheckeru.
+        /// </summary>
         public Referee? GetBestCandidate(State state, Slot slot)
         {
-            _sortedCandidates.TryGetValue(slot, out var candidates);
-
-            if (candidates == null)
-                return null;
-
+            var candidates = GetCandidatesWithCosts(slot);
             foreach (var c in candidates)
+            {
                 if (_conflictChecker.CanAssign(state, slot, c.Referee))
                     return c.Referee;
-
+            }
             return null;
         }
 
+        /// <summary>
+        /// Inicializuje tabulku. Pro každý slot předvypočítá ceny pro všechny způsobilé rozhodčí.
+        /// </summary>
         public void Initialize(List<Slot> slots, List<Referee> referees, int maxCandidatesPerSlot = 30)
         {
             _sortedCandidates.Clear();
-            _sortedCandidates = CalculateCosts(slots, referees, maxCandidatesPerSlot); 
-        }
-
-        private Dictionary<Slot, List<(Referee Referee, double Cost)>> CalculateCosts(
-            List<Slot> slots, 
-            List<Referee> referees, 
-            int maxCandidatesPerSlot = 30)
-        {
-            // Inicializace tvé kalkulačky
             var costMatrix = new Dictionary<Slot, List<(Referee Referee, double Cost)>>();
 
             foreach (var slot in slots)
             {
                 var candidatesForSlot = referees
-                    // 1. Zachováváme tvrdý filtr na Rank (pokud na to nemá rozhodčí papíry, ani nepočítáme cenu)
-                    .Where(r => r.Rank >= slot.RequiredRank)
-                    .Select(referee =>
-                    {
-                        // 2. Použití tvé metody AssignmentCost
-                        double cost = _costCalculator.AssignmentCost(slot, referee);
-                        return (Referee: referee, Cost: cost);
-                    })
-                    // 3. Seřazení od nejlevnějšího
+                    // Filtrujeme pouze ty, kteří pro daný slot vůbec přichází v úvahu z pohledu ranku.
+                    // (Pozn: CanAssign v ConflictCheckeru kontroluje rank znovu, což je v pořádku)
+                    .Where(r => IsRankEligible(r, slot))
+                    .Select(referee => (Referee: referee, Cost: _costCalculator.AssignmentCost(slot, referee)))
                     .OrderBy(c => c.Cost)
-                    // 4. Omezení na N nejlepších (aby se algoritmus neutopil v možnostech)
                     .Take(maxCandidatesPerSlot)
                     .ToList();
 
                 costMatrix.Add(slot, candidatesForSlot);
             }
 
-            return costMatrix;
+            _sortedCandidates = costMatrix;
+        }
+
+        /// <summary>
+        /// Pomocná metoda pro základní filtraci při inicializaci. 
+        /// Musí odpovídat logice v ConflictChecker.CanAssign.
+        /// </summary>
+        private bool IsRankEligible(Referee referee, Slot slot)
+        {
+            // Tady by měla být stejná logika jako ve tvém ConflictCheckeru (Rank + Margin)
+            // Pokud nemáš přístup ke konfiguraci přímo zde, CanAssign to pak stejně dofiltruje.
+            // Pro začátek stačí i tento základní filtr:
+            return referee.Rank >= (slot.RequiredRank - 20); // Rezerva pro marži
         }
     }
 }

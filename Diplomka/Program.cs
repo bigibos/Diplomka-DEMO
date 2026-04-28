@@ -82,7 +82,7 @@ BBSolver bbSolver = new BBSolver(
     conflictChecker,
     costCalculator,
     candidateTable,
-    timeLimit: TimeSpan.FromSeconds(30) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(90) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(
