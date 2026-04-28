@@ -40,13 +40,13 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
  */
 var config = new SolverConfiguration()
 {
-    MaxWasteTime = TimeSpan.FromHours(6),
+    MaxWasteTime = TimeSpan.FromHours(3),
     RefereePostTime = TimeSpan.FromMinutes(30),
     RefereePrepTime = TimeSpan.FromMinutes(30),
     DistanceFactor = 1.0,
-    RankFactor = 0.0,
     OverRankFactor = 1.0,
-    UnderRankFactor = 1.0
+    UnderRankFactor = 1.0,
+    UnassignedCost = 100_000.0
 };
 
 /*
@@ -71,7 +71,7 @@ BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(20) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(

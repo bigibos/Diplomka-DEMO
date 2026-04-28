@@ -32,6 +32,7 @@ namespace Diplomka.Solver
         /*
          * Velka cena pro nevyplneny slot
          */
-        public double UnassignedCost { get; set; } = 1000;
+        public double UnassignedCost { get; set; } = 100000;
+        public double RankDiffMargin { get; set; } = 10;
     }
 }

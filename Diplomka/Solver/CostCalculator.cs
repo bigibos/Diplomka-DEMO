@@ -94,8 +94,8 @@ namespace Diplomka.Solver
                 // znamená to, že tato větev je "mrtvá" – vrátíme extrémní penalizaci.
                 if (minCost == double.MaxValue)
                     return _config.UnassignedCost; // Okamžitý pruning
+      
 
-                lowerBound += minCost;
             }
             return lowerBound;
         }

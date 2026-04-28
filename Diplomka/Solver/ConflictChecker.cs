@@ -60,10 +60,9 @@ namespace Diplomka.Solver
         public bool CanAssign(State state, Slot slot, Referee referee)
         {
             // Kontrola hodnosti
-            /*
-            if (referee.Rank < slot.RequiredRank)
+            if (referee.Rank + _config.RankDiffMargin < slot.RequiredRank)
                 return false;
-            */
+
 
 
             // Kontrola časových kolizí
