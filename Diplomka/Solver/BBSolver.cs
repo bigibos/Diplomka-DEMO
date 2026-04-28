@@ -152,6 +152,7 @@ namespace Diplomka.Solver
 
             if (_nodesExplored % 200 == 0)
             {
+                Console.WriteLine($"[B&B] Prozkoumáno uzlů: {_nodesExplored}");
                 // Kontrolujeme casove omezeni
                 if (DateTime.UtcNow - _startTime > _timeLimit)
                     _timeLimitExceeded = true;

@@ -30,7 +30,7 @@ List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
 slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
 
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
@@ -40,9 +40,9 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
  */
 var config = new SolverConfiguration()
 {
-    MaxWasteTime = TimeSpan.FromHours(6),
+    MaxWasteTime = TimeSpan.FromHours(12),
     RefereePostTime = TimeSpan.FromMinutes(30),
-    RefereePrepTime = TimeSpan.FromMinutes(30),
+    RefereePrepTime = TimeSpan.FromMinutes(45),
     DistanceFactor = 1.0,
     RankFactor = 0.0,
     OverRankFactor = 1.0,
@@ -71,7 +71,7 @@ BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(30) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(

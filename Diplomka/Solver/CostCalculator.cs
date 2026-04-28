@@ -93,7 +93,7 @@ namespace Diplomka.Solver
                 // Pokud pro prázdný slot neexistuje v aktuálním stavu žádný kandidát,
                 // znamená to, že tato větev je "mrtvá" – vrátíme extrémní penalizaci.
                 if (minCost == double.MaxValue)
-                    return _config.UnassignedCost; // Okamžitý pruning
+                    return double.MaxValue; // Okamžitý pruning
 
                 lowerBound += minCost;
             }
@@ -115,8 +115,15 @@ namespace Diplomka.Solver
                         if (c < minCost) minCost = c;
                     }
                 }
+
+                if (minCost == double.MaxValue)
+                    return double.MaxValue;
+
+                lb += minCost;
+                /*
                 // Pokud neexistuje žádný způsobilý rozhodčí, přidáme velkou penalizaci
                 lb += minCost == double.MaxValue ? _config.UnassignedCost : minCost;
+                */
             }
             return lb;
         }
