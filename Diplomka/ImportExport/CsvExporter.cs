@@ -47,6 +47,7 @@ namespace Diplomka.ImportExport
         public static void SaveState(string path, State state, RouteSolver routeSolver)
         {
             var dtos = StateCsvMapper.ToDtoList(state, routeSolver);
+            dtos = dtos.OrderBy(s => s.From).ToList();
 
             using var writer = new StreamWriter(path, false, new UTF8Encoding(true));
 

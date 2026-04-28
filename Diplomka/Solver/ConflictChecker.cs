@@ -64,15 +64,12 @@ namespace Diplomka.Solver
                 return false;
 
 
-
             // Kontrola časových kolizí
             foreach (var assignedSlot in state.GetSlotsByReferee(referee))
             {
                 if (Overlaps(slot, assignedSlot))
                     return false;
             }
-
-
 
             return true;
         }

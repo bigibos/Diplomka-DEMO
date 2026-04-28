@@ -37,40 +37,50 @@ namespace Diplomka.Solver
         public State Repair(State state)
         {
             var current = (State)state.Clone();
-            var emptySlots = current.GetEmptySlots()
-                .OrderByDescending(s => s.RequiredRank)
-                .ThenBy(s => s.Start)
-                .ToList();
 
-            foreach (var slot in emptySlots)
+            // Iterujeme dokud existují prázdné sloty (max N průchodů jako pojistka)
+            int maxPasses = 3;
+            for (int pass = 0; pass < maxPasses; pass++)
             {
-                // Pokus 1: standardní přiřazení
-                var eligible = _conflictChecker.GetEligibleReferees(current, slot, _referees);
-                if (eligible.Count > 0)
-                {
-                    var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
-                    current.SetReferee(slot, best);
-                    continue;
-                }
+                var emptySlots = current.GetEmptySlots()
+                    .OrderBy(s => s.RequiredRank)
+                    .ThenBy(s => s.Start)
+                    .ToList();
 
-                // Pokus 2: chain-repair – uvolni méně důležitý přiřazený slot
-                bool repaired = TryChainRepair(current, slot);
-                if (repaired) continue;
+                if (emptySlots.Count == 0)
+                    break;
 
-                // Pokus 3: nouzové přiřazení (porušuje časovou kolizi – logujeme)
-                var fallback = _referees
-                    .Where(r => r.Rank >= slot.RequiredRank)
-                    .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
-                    .FirstOrDefault();
+                Console.WriteLine($"[Repair] Průchod {pass + 1}, prázdných slotů: {emptySlots.Count}");
 
-                if (fallback != null)
+                foreach (var slot in emptySlots)
                 {
-                    Console.WriteLine($"[WARN] Nouzové přiřazení (kolize) pro slot {slot}: {fallback.Name}");
-                    current.SetReferee(slot, fallback);
-                }
-                else
-                {
-                    Console.WriteLine($"[ERROR] Nelze přiřadit žádného rozhodčího ke slotu {slot}");
+                    // Pokus 1: standardní přiřazení
+                    var eligible = _conflictChecker.GetEligibleReferees(current, slot, _referees);
+                    if (eligible.Count > 0)
+                    {
+                        var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
+                        current.SetReferee(slot, best);
+                        continue;
+                    }
+
+                    // Pokus 2: chain-repair
+                    bool repaired = TryChainRepair(current, slot);
+                    if (repaired) continue;
+
+                    // Pokus 3: nouzové přiřazení (ignoruje časovou kolizi)
+                    var fallback = _referees
+                        .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
+                        .FirstOrDefault();
+
+                    if (fallback != null)
+                    {
+                        Console.WriteLine($"[WARN] Nouzové přiřazení (kolize) pro slot {slot}: {fallback.Name}");
+                        current.SetReferee(slot, fallback);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ERROR] Nelze přiřadit žádného rozhodčího ke slotu {slot}");
+                    }
                 }
             }
 
