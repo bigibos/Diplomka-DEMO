@@ -43,83 +43,16 @@ namespace Diplomka.Solver
             if (referee == null)
                 return _config.UnassignedCost;
 
+            double rankFactor = referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
-            if (rankDiff != 0)
+            /*
+            if (rankDiff > 0)
                 rankDiff *= referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
-
+            */
             var route = _routeSolver.ComputeOptimalRoute(state,  slot, referee);
 
-            return _config.RankFactor * rankDiff + _config.DistanceFactor * route.DistanceKm;
-        }
-
-        // TODO: Asi do budoucna nevyuzitelna vec - pozdeji smazat
-        public double AssignmentCost1(State state, Slot slot, Referee referee)
-        {
-            var existing = state.GetSlotsByReferee(referee)
-                                .OrderBy(s => s.Start)
-                                .ToList();
-
-            var prev = existing.LastOrDefault(s => s.End <= slot.Start);
-            var next = existing.FirstOrDefault(s => s.Start >= slot.End);
-
-            double distIn = ComputeLegDistance(prev?.Location ?? referee.Location,
-                                                slot.Location,
-                                                prev?.End,
-                                                slot.Start,
-                                                referee.Location);
-
-            double distOut = ComputeLegDistance(slot.Location,
-                                                next?.Location ?? referee.Location,
-                                                slot.End,
-                                                next?.Start,
-                                                referee.Location);
-
-            // Úspora oproti přímé trase prev→next (marginální přírůstek)
-            double distSaved = _distanceTable.GetRouteInfo(
-                prev?.Location ?? referee.Location,
-                next?.Location ?? referee.Location).DistanceKm;
-
-            double marginalDistance = distIn + distOut - distSaved;
-
-            double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
-            return _config.RankFactor * rankDiff + _config.DistanceFactor * marginalDistance;
-        }
-
-
-        // TODO: Taky do budoucna smazat - patri nepouzivane AssignmentCost1
-        private double ComputeLegDistance(
-            Geo from,
-            Geo to,
-            DateTime? departureTime,
-            DateTime? arrivalTime,
-            Geo home)
-        {
-            double directDistance = _distanceTable.GetRouteInfo(from, to).DistanceKm;
-            double viaHomeDistance = _distanceTable.GetRouteInfo(from, home).DistanceKm
-                                   + _distanceTable.GetRouteInfo(home, to).DistanceKm;
-
-            if (directDistance == 0 && viaHomeDistance == 0) return 0;
-
-            // Absolutní pravidlo: velká mezera → vždy domů
-            bool absoluteReturn = departureTime.HasValue && arrivalTime.HasValue
-                && (arrivalTime.Value - departureTime.Value) >= _config.HomeReturnMaxGap;
-
-            if (absoluteReturn)
-                return viaHomeDistance;
-
-            // Poměrové rozhodnutí: mezera (min) / (přímá vzdálenost + 1)
-            if (departureTime.HasValue && arrivalTime.HasValue)
-            {
-                double gapMinutes = (arrivalTime.Value - departureTime.Value).TotalMinutes;
-                double score = gapMinutes / (directDistance + 1);
-
-                if (score >= _config.HomeReturnScoreThreshold)
-                    return viaHomeDistance;
-            }
-
-            // Výchozí: kratší trasa vyhrává
-            return Math.Min(directDistance, viaHomeDistance);
+            return rankFactor * rankDiff + _config.DistanceFactor * route.DistanceKm;
         }
 
         /*
@@ -160,7 +93,7 @@ namespace Diplomka.Solver
                 // Pokud pro prázdný slot neexistuje v aktuálním stavu žádný kandidát,
                 // znamená to, že tato větev je "mrtvá" – vrátíme extrémní penalizaci.
                 if (minCost == double.MaxValue)
-                    return 1_000_000; // Okamžitý pruning
+                    return _config.UnassignedCost; // Okamžitý pruning
 
                 lowerBound += minCost;
             }
@@ -183,7 +116,7 @@ namespace Diplomka.Solver
                     }
                 }
                 // Pokud neexistuje žádný způsobilý rozhodčí, přidáme velkou penalizaci
-                lb += minCost == double.MaxValue ? 1_000_000 : minCost;
+                lb += minCost == double.MaxValue ? _config.UnassignedCost : minCost;
             }
             return lb;
         }

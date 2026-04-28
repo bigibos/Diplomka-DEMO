@@ -33,6 +33,7 @@ namespace Diplomka.Solver
             if (first.End > second.Start)
                 return true;
 
+
             // Ziskani doby potrebne pro presun mezi sloty
             var route = _distanceTable.GetRouteInfo(first.Location, second.Location);
             TimeSpan travelTime = route.Duration;
@@ -43,7 +44,6 @@ namespace Diplomka.Solver
                 .Add(_config.RefereePostTime)
                 .Add(travelTime)
                 .Add(_config.RefereePrepTime);
-
 
             // Rozhodci to nestihne
             if (availableTime > second.Start)
@@ -60,10 +60,12 @@ namespace Diplomka.Solver
         public bool CanAssign(State state, Slot slot, Referee referee)
         {
             // Kontrola hodnosti
+            /*
             if (referee.Rank < slot.RequiredRank)
                 return false;
+            */
 
-            // TODO: Pricist cas na pripravu (cca 2h), odbavení (cca 1h) a cestu (dle vzdalenosti) 
+
             // Kontrola časových kolizí
             foreach (var assignedSlot in state.GetSlotsByReferee(referee))
             {
