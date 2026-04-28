@@ -32,17 +32,20 @@ namespace Diplomka.Solver
         private readonly List<Referee> _referees;
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SortedCandidateTable _candidateTable;
         private readonly TimeSpan _timeLimitPerWeek;
 
         public WeeklyDecompositionSolver(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
+            SortedCandidateTable candidateTable,
             TimeSpan? timeLimitPerWeek = null)
         {
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;
+            _candidateTable = candidateTable;
             _timeLimitPerWeek = timeLimitPerWeek ?? TimeSpan.FromSeconds(30);
         }
 
@@ -177,6 +180,6 @@ namespace Diplomka.Solver
         }
 
         private BBSolver CreateSolver() =>
-            new BBSolver(_referees, _conflictChecker, _costCalculator, _timeLimitPerWeek);
+            new BBSolver(_referees, _conflictChecker, _costCalculator, _candidateTable, _timeLimitPerWeek);
     }
 }

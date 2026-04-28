@@ -18,16 +18,19 @@ namespace Diplomka.Solver
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SortedCandidateTable _candidateTable;
 
         public GreedySolver(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
-            CostCalculator costCalculator
+            CostCalculator costCalculator,
+            SortedCandidateTable candidateTable
             )
         {
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
-            _costCalculator = costCalculator;   
+            _costCalculator = costCalculator;
+            _candidateTable = candidateTable;
         }
 
         public State Solve(State state)
@@ -51,8 +54,10 @@ namespace Diplomka.Solver
 
             foreach (var slot in orderedSlots)
             {
+                /*
                 // Najdi způsobilé rozhodčí (hodnost + bez časové kolize)
                 var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
+                
 
                 if (eligible.Count == 0)
                 {
@@ -64,6 +69,11 @@ namespace Diplomka.Solver
                 var best = eligible
                     .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
                     .First();
+                */
+                var best = _candidateTable.GetBestCandidate(state, slot);
+
+                if (best == null)
+                    continue; // Slot zustane prazdny - opravi repair
 
                 state.SetReferee(slot, best);
             }

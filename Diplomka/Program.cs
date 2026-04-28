@@ -33,6 +33,8 @@ slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb.csv");
 referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
 
 
+
+
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
 /*
@@ -40,7 +42,7 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
  */
 var config = new SolverConfiguration()
 {
-    MaxWasteTime = TimeSpan.FromHours(12),
+    MaxWasteTime = TimeSpan.FromHours(6),
     RefereePostTime = TimeSpan.FromMinutes(30),
     RefereePrepTime = TimeSpan.FromMinutes(45),
     DistanceFactor = 1.0,
@@ -66,18 +68,28 @@ var routeSolver = new RouteSolver(distanceTable, config);
 var conflictChecker = new ConflictChecker(distanceTable, config);
 var costCalculator = new CostCalculator(distanceTable, config);
 
+/*
+ * Vytvoreni serazene tabulky kandidatu
+ */
+
+Console.WriteLine("Vytvareni serazene tabulky kandidatu...");
+var candidateTable = new SortedCandidateTable(costCalculator, conflictChecker);
+candidateTable.Initialize(slots, referees, referees.Count);
+
 
 BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+    candidateTable,
+    timeLimit: TimeSpan.FromSeconds(30) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(
     referees,
     conflictChecker,
-    costCalculator
+    costCalculator,
+    candidateTable
 );
 
 Stopwatch sw = new Stopwatch();

@@ -48,6 +48,7 @@ namespace Diplomka.Solver
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SortedCandidateTable _candidateTable;
 
         private State? _bestState;
         private double _bestCost;
@@ -64,6 +65,7 @@ namespace Diplomka.Solver
             IEnumerable<Referee> referees, 
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
+            SortedCandidateTable candidateTable,
             TimeSpan? timeLimit = null
             )
         {
@@ -71,6 +73,7 @@ namespace Diplomka.Solver
             
             _conflictChecker = conflictChecker; 
             _costCalculator = costCalculator;
+            _candidateTable = candidateTable;
             
             _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
@@ -112,7 +115,7 @@ namespace Diplomka.Solver
 
             // Jednoduche (greedy) pocatecni reseni pro upper bound
             Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
-            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
+            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator, _candidateTable).Solve(slotList);
 
             // Pripadna oprava greedy reseni
             var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
@@ -180,16 +183,21 @@ namespace Diplomka.Solver
             var (mrvSlot, candidateRefs) = SelectSlotMRV(state, emptySlots);
 
             // Serazeni kandidatu podle ceny (best-first)
-            var candidatesWithCost = candidateRefs
+            /*
+            var candidates = candidateRefs
                 .Select(r => (Referee: r, Cost: _costCalculator.AssignmentCost(state, mrvSlot, r)))
                 .OrderBy(x => x.Cost)
                 .ToList();
+            */
+
+            var candidates = _candidateTable.GetCandidatesWithCosts(mrvSlot);
+            
 
             // Pruning - neni zadny vhodny rozhodci
             if (candidateRefs.Count == 0)
                 return;
 
-            foreach (var (referee, assignmentCost) in candidatesWithCost)
+            foreach (var (referee, assignmentCost) in candidates)
             {
                 // double assignmentCost = _costCalculator.AssignmentCost(state, mrvSlot, referee);
                 double newTotalCost = totalCost + assignmentCost;

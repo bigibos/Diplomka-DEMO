@@ -10,7 +10,7 @@ namespace Diplomka.Routing
 {
     public class DistanceTable
     {
-        private Dictionary<(Geo, Geo), RouteInfo> _distances = new Dictionary<(Geo, Geo), RouteInfo>();
+        private Dictionary<(Geo, Geo), RouteInfo> _distances = new();
 
         private static readonly HttpClient _client = new HttpClient();
 

@@ -10,6 +10,7 @@ namespace Diplomka.Solver
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SortedCandidateTable _candidateTable;
 
         private State? _bestState;
         private double _bestCost;
@@ -22,18 +23,20 @@ namespace Diplomka.Solver
         public HCSolver(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
-            CostCalculator costCalculator
+            CostCalculator costCalculator,
+            SortedCandidateTable candidateTable
             )
         {
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;
+            _candidateTable = candidateTable;
         }
 
         // Validní počáteční stav — greedy, ne náhodný
         private State InitialState(List<Slot> slots)
         {
-            return new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
+            return new GreedySolver(_referees, _conflictChecker, _costCalculator, _candidateTable).Solve(slots);
         }
 
         // Tah respektující omezení — vymění rozhodčího za způsobilého náhradníka
