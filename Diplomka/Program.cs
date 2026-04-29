@@ -73,8 +73,9 @@ BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(60*15) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(20) // omezeni casu behu B&B
 );
+
 
 HCSolver hcSolver = new HCSolver(
     referees,
@@ -86,7 +87,7 @@ Stopwatch sw = new Stopwatch();
 
 sw.Restart();
 State resultBB = bbSolver.Solve(slots);
-sw.Stop(); 
+sw.Stop();
 
 Console.WriteLine("Rešení pomocí Branch & Bound:");
 Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(resultBB):F2}");
@@ -94,7 +95,7 @@ Console.WriteLine($"Prázdné sloty:      {resultBB.GetEmptySlots().ToList().Cou
 Console.WriteLine($"Prozkoumáno uzlů:   {bbSolver.NodesExplored}");
 Console.WriteLine($"Hotovo za:          {sw.ElapsedMilliseconds} ms");
 
-CsvExporter.SaveState($"{rootDirectory}\\result.csv", resultBB, routeSolver);
+CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB, routeSolver);
 
 /*
 Console.WriteLine("Spoustim week solver");

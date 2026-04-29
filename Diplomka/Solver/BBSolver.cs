@@ -74,7 +74,7 @@ namespace Diplomka.Solver
         private double _bestStaticCost; // Pouze pro logování, abychom věděli, jak se mění statická složka
 
         public long NodesExplored { get; private set; }
-        public double BestCost => _bestCost;
+        public double BestCost => _bestActualCost;
 
         // ─── Předvypočítaná data (nastavují se jednou v Precompute) ───────────────
 
@@ -192,11 +192,11 @@ namespace Diplomka.Solver
             Console.WriteLine($"[B&B] Předvýpočet pro {slotList.Count} slotů, {_referees.Count} rozhodčích...");
             Precompute(slotList);
 
-            Console.WriteLine($"[B&B] Spouštím DFS (limit: {_timeLimit.TotalSeconds} s, UB: {_bestCost:F2})...");
+            Console.WriteLine($"[B&B] Spouštím DFS (limit: {_timeLimit.TotalSeconds} s, UB: {_bestActualCost:F2})...");
             InitSearchState();
             Dfs(depth: 0, costSoFar: 0.0, unassigned: _S);
 
-            Console.WriteLine($"[B&B] Hotovo. Uzlů: {NodesExplored}, cena: {_bestCost:F2}");
+            Console.WriteLine($"[B&B] Hotovo. Uzlů: {NodesExplored}, cena: {_bestActualCost:F2}");
             return _bestState!;
         }
 
