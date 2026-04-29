@@ -12,6 +12,8 @@ namespace Diplomka.Solver
 
         private Dictionary<Slot, List<(Referee Referee, double Cost)>> _sortedCandidates = new();
 
+
+
         private readonly CostCalculator _costCalculator;
         private readonly ConflictChecker _conflictChecker;
 
@@ -67,8 +69,6 @@ namespace Diplomka.Solver
                     bestCandidates = availableCandidates;
                 }
 
-                // Pokud narazíme na slot, který nejde obsadit, okamžitě končíme (Pruning)
-                if (count == 0) break;
             }
 
             return (bestSlot, bestCandidates ?? _emptyList);
@@ -99,9 +99,6 @@ namespace Diplomka.Solver
             foreach (var slot in slots)
             {
                 var candidatesForSlot = referees
-                    // Filtrujeme pouze ty, kteří pro daný slot vůbec přichází v úvahu z pohledu ranku.
-                    // (Pozn: CanAssign v ConflictCheckeru kontroluje rank znovu, což je v pořádku)
-                    .Where(r => IsRankEligible(r, slot))
                     .Select(referee => (Referee: referee, Cost: _costCalculator.AssignmentCost(slot, referee)))
                     .OrderBy(c => c.Cost)
                     .Take(maxCandidatesPerSlot)

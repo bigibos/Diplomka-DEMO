@@ -35,9 +35,8 @@ namespace Diplomka.Solver
         public List<Slot> GetSlotsByReferee(Referee referee)
         {
             if (_refereeToSlots.TryGetValue(referee, out var slots))
-            {
                 return slots;
-            }
+            
             return new List<Slot>();
         }
 

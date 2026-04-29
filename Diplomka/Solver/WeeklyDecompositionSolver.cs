@@ -179,7 +179,7 @@ namespace Diplomka.Solver
                 .ToDictionary(g => g.Key, g => g.ToList());
         }
 
-        private BBSolver CreateSolver() =>
-            new BBSolver(_referees, _conflictChecker, _costCalculator, _candidateTable, _timeLimitPerWeek);
+        private BBSolverOLD CreateSolver() =>
+            new BBSolverOLD(_referees, _conflictChecker, _costCalculator, _candidateTable, _timeLimitPerWeek);
     }
 }

@@ -1,12 +1,13 @@
 ﻿using Diplomka;
 using Diplomka.Entity;
 using Diplomka.Files;
-using Diplomka.Solver;
-using System.Diagnostics;
 using Diplomka.ImportExport;
-using System.Runtime.ExceptionServices;
 using Diplomka.Routing;
+using Diplomka.Solver;
+using System;
+using System.Diagnostics;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
 
 /*
  * TODO: Opravit
@@ -46,8 +47,8 @@ var config = new SolverConfiguration()
     RefereePostTime = TimeSpan.FromMinutes(30),
     RefereePrepTime = TimeSpan.FromMinutes(45),
     DistanceFactor = 1.0,
-    OverRankFactor = 1.0,
-    UnderRankFactor = 1.0,
+    OverRankFactor = 0.15,
+    UnderRankFactor = 0.75,
     UnassignedCost = 100_000.0
 };
 
@@ -71,18 +72,22 @@ var costCalculator = new CostCalculator(distanceTable, config);
 /*
  * Vytvoreni serazene tabulky kandidatu
  */
-
-Console.WriteLine("Vytvareni serazene tabulky kandidatu...");
+/*
+*/
+Console.WriteLine("[OLD] Vytvareni serazene tabulky kandidatu...");
 var candidateTable = new SortedCandidateTable(costCalculator, conflictChecker);
 candidateTable.Initialize(slots, referees, referees.Count);
 
+Console.WriteLine("[NEW] Vytvareni pristupoveho indexu...");
+var bbIndex = new BbSearchIndex(conflictChecker, costCalculator);
+bbIndex.Build(slots, referees);
 
 BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    candidateTable,
-    timeLimit: TimeSpan.FromSeconds(90) // omezeni casu behu B&B
+    bbIndex,
+    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(
