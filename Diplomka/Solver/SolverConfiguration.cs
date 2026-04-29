@@ -8,6 +8,8 @@ namespace Diplomka.Solver
 {
     public class SolverConfiguration
     {
+        public double MaxBoundGap { get; set; } = 0.0;
+
         /*
          * Parametry pro cas potrebny pred zapasem (priprava) a po zapase (uzavreni)
          */

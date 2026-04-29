@@ -29,8 +29,9 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb.csv");
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
 referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
+
 
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
@@ -46,7 +47,8 @@ var config = new SolverConfiguration()
     DistanceFactor = 1.0,
     OverRankFactor = 1.0,
     UnderRankFactor = 1.0,
-    UnassignedCost = 100_000.0
+    UnassignedCost = 100_000.0,
+    MaxBoundGap = 10.0
 };
 
 /*
@@ -71,7 +73,7 @@ BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(60*15) // omezeni casu behu B&B
 );
 
 HCSolver hcSolver = new HCSolver(
