@@ -154,9 +154,15 @@ namespace Diplomka.Solver
         {
             _bestState = (State)state.Clone();
             _bestActualCost = _costCalculator.TotalCost(state);
-            _bestStaticCost = ComputeStaticCost(state);
 
-            Console.WriteLine($"[B&B] Warm start - Skutečná cena: {_bestActualCost:F2} (Statická složka: {_bestStaticCost:F2})");
+            // Statické UB = součet AssignmentCost přiřazených slotů
+            //             + UnassignedCost * počet prázdných slotů.
+            // B&B ve skip větvi platí stejnou penalizaci za každý přeskočený slot,
+            // takže LB i UB jsou ve stejném "statickém světě" → ořezávání je přípustné.
+            int emptyCount = state.GetEmptySlots().Count();
+            _bestStaticCost = ComputeStaticCost(state) + emptyCount * _config.UnassignedCost;
+
+            Console.WriteLine($"[B&B] Warm start - Skutečná: {_bestActualCost:F2} | Statická UB (přiřazení + {emptyCount}×skip): {_bestStaticCost:F2}");
             return RunBB(state.GetSlots());
         }
 
@@ -178,10 +184,16 @@ namespace Diplomka.Solver
 
             _bestState = greedy;
             _bestActualCost = _costCalculator.TotalCost(greedy);
-            _bestStaticCost = ComputeStaticCost(greedy);
-            Console.WriteLine($"Neobsazene sloty greedy: {_bestState.GetEmptySlots().Count()}");
-            Console.WriteLine($"[B&B] Počáteční cena (greedy+repair) - Skutečná: {_bestActualCost:F2} (Statická: {_bestStaticCost:F2})");
-     
+
+            // Statické UB zahrnuje penalizaci za prázdné sloty – stejně jako skip větev v DFS.
+            // Bez toho by greedy (který sloty přeskakuje zdarma) měl UB ~9090,
+            // zatímco B&B (který přeskočení platí penalizací) by nikdy nepřekoná tak nízké UB.
+            var emptySlots = greedy.GetEmptySlots().ToList();
+            _bestStaticCost = ComputeStaticCost(greedy) * 1.15 + emptySlots.Count * _config.UnassignedCost;
+
+
+            Console.WriteLine($"[B&B] Počáteční cena - Skutečná: {_bestActualCost:F2} | Statická UB (přiřazení + {emptySlots.Count}×skip): {_bestStaticCost:F2}");
+
 
             return RunBB(slotList);
         }
@@ -198,7 +210,7 @@ namespace Diplomka.Solver
             Console.WriteLine($"[B&B] Předvýpočet pro {slotList.Count} slotů, {_referees.Count} rozhodčích...");
             Precompute(slotList);
 
-            Console.WriteLine($"[B&B] Spouštím DFS (limit: {_timeLimit.TotalSeconds} s, UB: {_bestActualCost:F2})...");
+            Console.WriteLine($"[B&B] Spouštím DFS (limit: {_timeLimit.TotalSeconds} s, UB statická: {_bestStaticCost:F2}, skutečná: {_bestActualCost:F2})...");
             InitSearchState();
             Dfs(depth: 0, costSoFar: 0.0, unassigned: _S);
 
@@ -330,11 +342,11 @@ namespace Diplomka.Solver
             NodesExplored++;
 
             // Periodická kontrola časového limitu (každých 10 000 uzlů)
-            if (NodesExplored % 250_000 == 0)
+            if (NodesExplored % 500_000 == 0)
             {
                 Console.WriteLine(
                     $"[B&B] Uzlů: {NodesExplored,10:N0} | hloubka: {depth,4} | " +
-                    $"LB: {costSoFar + _lbRemainder,10:F2} | UB (Actual): {_bestActualCost,10:F2} | " +
+                    $"LB: {costSoFar + _lbRemainder,10:F2} | UB (statická): {_bestStaticCost,10:F2} | " +
                     $"Empty: {unassigned} | " +
                     $"čas: {(DateTime.UtcNow - _startTime).TotalSeconds:F1}s");
 
@@ -351,90 +363,84 @@ namespace Diplomka.Solver
                 var candidateState = BuildState();
                 double actualCost = _costCalculator.TotalCost(candidateState);
 
-
-                if (actualCost < _bestActualCost)
+                if (actualCost < _bestActualCost) // skutečná, ne statická
                 {
                     _bestActualCost = actualCost;
-                    _bestStaticCost = costSoFar;
-                    _bestState = BuildState();
-                    Console.WriteLine($"[B&B] -*- Nové optimum! Skutečná cena: {_bestActualCost:F2} (Statická složka: {_bestStaticCost:F2}) v uzlu {NodesExplored:N0}");
+                    _bestStaticCost = costSoFar * 1.15; // posuň UB podle nového optima
+                    _bestState = candidateState;
+                    Console.WriteLine($"[B&B] -*- Nové optimum! Skutečná: {_bestActualCost:F2} | uzel {NodesExplored:N0}");
                 }
                 return;
             }
 
             // ── MRV: výběr nejkonstrikovanějšího nepřiřazeného slotu ──────────────
-            // O(S) – pouze porovnání předvypočítaných _eligCnt[i], žádné volání do ConflictChecker.
             int slotIdx = SelectMrvSlot();
 
-            double skipCost = costSoFar + _config.UnassignedCost;
-            double lbAfterSkip = skipCost + (_lbRemainder - _minCost[slotIdx]);
-            if (lbAfterSkip < _bestActualCost * (1.0 - _config.RelativeGap))
+            // ── Assign větve: zkusíme přiřadit každého způsobilého rozhodčího ────
+            // (Pokud _eligCnt == 0, tuto část přeskočíme a jdeme rovnou na skip větev.)
+            if (_eligCnt[slotIdx] > 0)
             {
-                // Označ slot jako přeskočený (assigned[slotIdx] = -2 nebo podobně)
-                _lbRemainder -= _minCost[slotIdx];
-                _unassigned[slotIdx] = false;
-                Dfs(depth + 1, skipCost, unassigned - 1);
-                _unassigned[slotIdx] = true;
-                _lbRemainder += _minCost[slotIdx];
+                int[] candBuf = _candidateBuffers[depth];
+                int cCount = 0;
+                int slotBase = slotIdx * _R;
+
+                foreach (int j in _rankOk[slotIdx])
+                    if (_eligible[slotBase + j])
+                        candBuf[cCount++] = j;
+
+                InsertionSortByCost(candBuf, cCount, slotBase);
+
+                for (int ci = 0; ci < cCount; ci++)
+                {
+                    int refIdx = candBuf[ci];
+                    double assignCost = _cost[slotBase + refIdx];
+                    double newCost = costSoFar + assignCost;
+
+                    double lbAfterAssign = newCost + (_lbRemainder - _minCost[slotIdx]);
+                    if (lbAfterAssign >= _bestStaticCost * (1.0 - _config.RelativeGap))
+                        continue; // prune before assign
+
+                    Assign(depth, slotIdx, refIdx, out bool forwardOk);
+
+                    if (forwardOk)
+                    {
+                        double lb = newCost + _lbRemainder;
+                        if (lb < _bestStaticCost * (1.0 - _config.RelativeGap))
+                            Dfs(depth + 1, newCost, unassigned - 1);
+                    }
+
+                    Unassign(depth, slotIdx, refIdx);
+
+                    if (_timeLimitExceeded) return;
+                }
             }
 
-            // Forward checking: slot bez způsobilého rozhodčího = mrtvá větev
-            if (_eligCnt[slotIdx] == 0) return;
-
-            // ── Sestavení a seřazení kandidátů pro MRV slot ───────────────────────
-            // Čteme přímo z předalokovaného bufferu – nulová heap alokace.
-            int[] candBuf = _candidateBuffers[depth];
-            int cCount = 0;
-            int slotBase = slotIdx * _R;
-
-            foreach (int j in _rankOk[slotIdx])
-                if (_eligible[slotBase + j])
-                    candBuf[cCount++] = j;
-
-            // Řazení kandidátů podle ceny (value ordering: nejlevnější rozhodčí první).
-            // Pro typicky malý cCount (≤ 30) je insertion sort efektivnější než Array.Sort.
-            InsertionSortByCost(candBuf, cCount, slotBase);
-
-            // ── Větvení ───────────────────────────────────────────────────────────
-            for (int ci = 0; ci < cCount; ci++)
+            // ── Skip větev: slot zůstane nepřiřazený, platíme UnassignedCost ─────
+            // Tato větev je klíčová: greedy také sloty přeskakuje, takže B&B musí mít
+            // stejnou možnost – jinak soutěží za jiných pravidel a nikdy greedy nepřekoná.
+            // Slot ponecháme s _assigned[slotIdx] == -1, jen ho vyjmeme z "unassigned" množiny.
             {
-                int refIdx = candBuf[ci];
-                double assignCost = _cost[slotBase + refIdx];
-                double newCost = costSoFar + assignCost;
-
-                // Rychlé ořezávání před přiřazením:
-                // Nejlepší možná LB pro tuto větev je newCost + (_lbRemainder - _minCost[slotIdx]).
-                // _minCost[slotIdx] se po přiřazení odečte z _lbRemainder, proto předpočítáme.
-                double lbAfterAssign = newCost + (_lbRemainder - _minCost[slotIdx]);
-                if (lbAfterAssign >= _bestActualCost * (1.0 - _config.RelativeGap))
+                double skipCost = costSoFar + _config.UnassignedCost;
+                double lbAfterSkip = skipCost + (_lbRemainder - _minCost[slotIdx]);
+                if (lbAfterSkip < _bestStaticCost * (1.0 - _config.RelativeGap))
                 {
-                    // Console.WriteLine("[B&B] Odrezevam pred prirazenim");
-                    continue; // prune before assign
+                    // Dočasně označíme slot jako zpracovaný (ale nepřiřazený)
+                    double savedMinCost = _minCost[slotIdx];
+                    _unassigned[slotIdx] = false;
+                    _lbRemainder -= savedMinCost;
+
+                    Dfs(depth + 1, skipCost, unassigned - 1);
+
+                    // Backtrack
+                    _unassigned[slotIdx] = true;
+                    _lbRemainder += savedMinCost;
                 }
-
-                // Přiřazení + inkrementální update eligible množin a _lbRemainder.
-                // forwardOk = false znamená, že některý zbývající slot ztratil všechny kandidáty.
-                Assign(depth, slotIdx, refIdx, out bool forwardOk);
-
-                if (forwardOk)
-                {
-                    // Finální LB kontrola po přiřazení (zahrnuje aktualizované _lbRemainder)
-                    double lb = newCost + _lbRemainder;
-                    if (lb < _bestActualCost * (1.0 - _config.RelativeGap))
-                        Dfs(depth + 1, newCost, unassigned - 1);
-                }
-
-                // Console.WriteLine("[B&B] Backtracking - nenalezeno lepsi reseni v dane vetvi");
-                // Backtrack: obnova eligible množin a _lbRemainder do stavu před Assign
-                Unassign(depth, slotIdx, refIdx);
-
-                if (_timeLimitExceeded) return;
             }
         }
 
         // ─── MRV výběr slotu (O(S), žádné extern. volání) ─────────────────────────
 
-        private int SelectMrvSlot()
+        private int SelectMrvSlot_Old()
         {
             int best = -1;
             int bestCnt = int.MaxValue;
@@ -458,6 +464,32 @@ namespace Diplomka.Solver
             }
 
             return best; // -1 pokud žádný nepřiřazený slot (nekane se stát pokud unassigned > 0)
+        }
+
+        private int SelectMrvSlot()
+        {
+            int best = -1;
+            double bestScore = double.MaxValue;
+
+            for (int i = 0; i < _S; i++)
+            {
+                if (!_unassigned[i]) continue;
+
+                int cnt = _eligCnt[i];
+                if (cnt == 0) return i; // okamžitě – mrtvá větev nebo skip
+
+                // Skóre = (počet kandidátů) × (počet aktivních překryvů)
+                // Nízké skóre = málo kandidátů A málo dopad na ostatní
+                int activeOverlaps = _overlaps[i].Count(o => _unassigned[o]);
+                double score = cnt * (1 + activeOverlaps);
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = i;
+                }
+            }
+            return best;
         }
 
         // ─── Assign: přiřazení + inkrementální update ────────────────────────────

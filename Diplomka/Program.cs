@@ -31,36 +31,36 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb_2.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
+// slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb_2.csv");
+// referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
 
 ScenerioGenerator gen = new ScenerioGenerator
 {
-    SlotsNumber = 150,
-    RefereeNumber = 100,
-    DayClustering = 0.5,
-    LocationClustering = 0.7,
-    OverlapProbability = 0.3,
-    EliteRefereeProbability = 0.7,
+    SlotsNumber = 60,
+    RefereeNumber = 35,
+    DayClustering = 0.4,
+    LocationClustering = 0.5,
+    OverlapProbability = 0.05,
+    EliteRefereeProbability = 0.2,
     RefereeRankDistribution = new()
     {
-        new RankBucket { Min = 70, Max = 100, Weight = 0.15 },
-        new RankBucket { Min = 30, Max = 70, Weight = 0.60 },
-        new RankBucket { Min = 10, Max = 30, Weight = 0.25 }
+        new RankBucket { Min = 80, Max = 100, Weight = 0.15 },
+        new RankBucket { Min = 40, Max = 80, Weight = 0.55 },
+        new RankBucket { Min = 10, Max = 40, Weight = 0.30 }
     },
     SlotRankDistribution = new()
     {
-        new RankBucket { Min = 70, Max = 100, Weight = 0.35 }, // víc náročných slotů
-        new RankBucket { Min = 30, Max = 70, Weight = 0.50 },
-        new RankBucket { Min = 10, Max = 30, Weight = 0.15 }
+        new RankBucket { Min = 75, Max = 100, Weight = 0.40 }, // víc náročných slotů
+        new RankBucket { Min = 40, Max = 75, Weight = 0.45 },
+        new RankBucket { Min = 10, Max = 40, Weight = 0.15 }
     }
 };
 
 var dateFrom = new DateTime(2025, 3, 1, 8, 0, 0);
-var dateTo = new DateTime(2025, 3, 3, 20, 0, 0);
+var dateTo = new DateTime(2025, 3, 7, 20, 0, 0);
 
-// slots = gen.GenerateSlots(dateFrom, dateTo);
-// referees = gen.GenerateReferess();
+slots = gen.GenerateSlots(dateFrom, dateTo);
+referees = gen.GenerateReferess();
 
 /*
 foreach(var s in slots)
@@ -110,7 +110,7 @@ BBSolver bbSolver = new BBSolver(
     conflictChecker,
     costCalculator,
     config,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(60*5) // omezeni casu behu B&B
 );
 
 
@@ -120,9 +120,9 @@ HCSolver hcSolver = new HCSolver(
     costCalculator
 )
 {
-    MaxAttempts = 200,
-    MaxIterations = 3000,
-    MaxMoves = 80
+    MaxAttempts = 150,
+    MaxIterations = slots.Count * 2,
+    MaxMoves = 60
 };
 
 Stopwatch sw = new Stopwatch();
