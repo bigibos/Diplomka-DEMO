@@ -15,9 +15,9 @@ namespace Diplomka.Solver
         private double _bestCost;
         public double BestCost => _bestCost;
 
-        public int MaxAttempts { get; set; } = 10;
-        public int MaxIterations { get; set; } = 1000;
-        public int MaxMoves { get; set; } = 20;
+        public int MaxAttempts { get; set; } = 100;
+        public int MaxIterations { get; set; } = 2000;
+        public int MaxMoves { get; set; } = 50;
 
         public HCSolver(
             IEnumerable<Referee> referees,

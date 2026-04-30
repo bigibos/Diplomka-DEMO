@@ -1,6 +1,6 @@
 ﻿using Diplomka.Entity;
 using System.Globalization;
-
+/*
 namespace Diplomka.Solver
 {
     /// <summary>
@@ -180,3 +180,4 @@ namespace Diplomka.Solver
             new BBSolver(_referees, _conflictChecker, _costCalculator, _timeLimitPerWeek);
     }
 }
+*/

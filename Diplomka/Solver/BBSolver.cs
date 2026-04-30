@@ -63,6 +63,7 @@ namespace Diplomka.Solver
         private readonly TimeSpan _timeLimit;
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SolverConfiguration _config;
 
         // ─── Výsledky hledání ─────────────────────────────────────────────────────
         private State? _bestState;
@@ -136,11 +137,13 @@ namespace Diplomka.Solver
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
+            SolverConfiguration config,
             TimeSpan? timeLimit = null)
         {
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;
+            _config = config;
             _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
 
@@ -172,10 +175,13 @@ namespace Diplomka.Solver
                 greedy = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedy);
             }
 
+
             _bestState = greedy;
             _bestActualCost = _costCalculator.TotalCost(greedy);
             _bestStaticCost = ComputeStaticCost(greedy);
+            Console.WriteLine($"Neobsazene sloty greedy: {_bestState.GetEmptySlots().Count()}");
             Console.WriteLine($"[B&B] Počáteční cena (greedy+repair) - Skutečná: {_bestActualCost:F2} (Statická: {_bestStaticCost:F2})");
+     
 
             return RunBB(slotList);
         }
@@ -324,7 +330,7 @@ namespace Diplomka.Solver
             NodesExplored++;
 
             // Periodická kontrola časového limitu (každých 10 000 uzlů)
-            if (NodesExplored % 10_000 == 0)
+            if (NodesExplored % 250_000 == 0)
             {
                 Console.WriteLine(
                     $"[B&B] Uzlů: {NodesExplored,10:N0} | hloubka: {depth,4} | " +
@@ -351,7 +357,7 @@ namespace Diplomka.Solver
                     _bestActualCost = actualCost;
                     _bestStaticCost = costSoFar;
                     _bestState = BuildState();
-                    Console.WriteLine($"[B&B] ★ Nové optimum! Skutečná cena: {_bestActualCost:F2} (Statická složka: {_bestStaticCost:F2}) v uzlu {NodesExplored:N0}");
+                    Console.WriteLine($"[B&B] -*- Nové optimum! Skutečná cena: {_bestActualCost:F2} (Statická složka: {_bestStaticCost:F2}) v uzlu {NodesExplored:N0}");
                 }
                 return;
             }
@@ -359,6 +365,18 @@ namespace Diplomka.Solver
             // ── MRV: výběr nejkonstrikovanějšího nepřiřazeného slotu ──────────────
             // O(S) – pouze porovnání předvypočítaných _eligCnt[i], žádné volání do ConflictChecker.
             int slotIdx = SelectMrvSlot();
+
+            double skipCost = costSoFar + _config.UnassignedCost;
+            double lbAfterSkip = skipCost + (_lbRemainder - _minCost[slotIdx]);
+            if (lbAfterSkip < _bestActualCost * (1.0 - _config.RelativeGap))
+            {
+                // Označ slot jako přeskočený (assigned[slotIdx] = -2 nebo podobně)
+                _lbRemainder -= _minCost[slotIdx];
+                _unassigned[slotIdx] = false;
+                Dfs(depth + 1, skipCost, unassigned - 1);
+                _unassigned[slotIdx] = true;
+                _lbRemainder += _minCost[slotIdx];
+            }
 
             // Forward checking: slot bez způsobilého rozhodčího = mrtvá větev
             if (_eligCnt[slotIdx] == 0) return;
@@ -388,7 +406,11 @@ namespace Diplomka.Solver
                 // Nejlepší možná LB pro tuto větev je newCost + (_lbRemainder - _minCost[slotIdx]).
                 // _minCost[slotIdx] se po přiřazení odečte z _lbRemainder, proto předpočítáme.
                 double lbAfterAssign = newCost + (_lbRemainder - _minCost[slotIdx]);
-                if (lbAfterAssign >= _bestActualCost - 0.1) continue; // prune before assign
+                if (lbAfterAssign >= _bestActualCost * (1.0 - _config.RelativeGap))
+                {
+                    // Console.WriteLine("[B&B] Odrezevam pred prirazenim");
+                    continue; // prune before assign
+                }
 
                 // Přiřazení + inkrementální update eligible množin a _lbRemainder.
                 // forwardOk = false znamená, že některý zbývající slot ztratil všechny kandidáty.
@@ -398,10 +420,11 @@ namespace Diplomka.Solver
                 {
                     // Finální LB kontrola po přiřazení (zahrnuje aktualizované _lbRemainder)
                     double lb = newCost + _lbRemainder;
-                    if (lb < _bestActualCost)
+                    if (lb < _bestActualCost * (1.0 - _config.RelativeGap))
                         Dfs(depth + 1, newCost, unassigned - 1);
                 }
 
+                // Console.WriteLine("[B&B] Backtracking - nenalezeno lepsi reseni v dane vetvi");
                 // Backtrack: obnova eligible množin a _lbRemainder do stavu před Assign
                 Unassign(depth, slotIdx, refIdx);
 

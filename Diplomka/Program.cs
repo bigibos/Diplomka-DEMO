@@ -1,12 +1,14 @@
 ﻿using Diplomka;
 using Diplomka.Entity;
 using Diplomka.Files;
-using Diplomka.Solver;
-using System.Diagnostics;
 using Diplomka.ImportExport;
-using System.Runtime.ExceptionServices;
 using Diplomka.Routing;
+using Diplomka.Solver;
+using Diplomka.Utils;
+using System.Diagnostics;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
+using static Diplomka.Utils.ScenerioGenerator;
 
 /*
  * TODO: Opravit
@@ -29,10 +31,44 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots.csv");
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb_2.csv");
 referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
 
+ScenerioGenerator gen = new ScenerioGenerator
+{
+    SlotsNumber = 150,
+    RefereeNumber = 100,
+    DayClustering = 0.5,
+    LocationClustering = 0.7,
+    OverlapProbability = 0.3,
+    EliteRefereeProbability = 0.7,
+    RefereeRankDistribution = new()
+    {
+        new RankBucket { Min = 70, Max = 100, Weight = 0.15 },
+        new RankBucket { Min = 30, Max = 70, Weight = 0.60 },
+        new RankBucket { Min = 10, Max = 30, Weight = 0.25 }
+    },
+    SlotRankDistribution = new()
+    {
+        new RankBucket { Min = 70, Max = 100, Weight = 0.35 }, // víc náročných slotů
+        new RankBucket { Min = 30, Max = 70, Weight = 0.50 },
+        new RankBucket { Min = 10, Max = 30, Weight = 0.15 }
+    }
+};
 
+var dateFrom = new DateTime(2025, 3, 1, 8, 0, 0);
+var dateTo = new DateTime(2025, 3, 3, 20, 0, 0);
+
+// slots = gen.GenerateSlots(dateFrom, dateTo);
+// referees = gen.GenerateReferess();
+
+/*
+foreach(var s in slots)
+    Console.WriteLine(s);
+
+foreach (var r in referees)
+    Console.WriteLine(r);
+*/
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
@@ -41,14 +77,14 @@ Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slot�
  */
 var config = new SolverConfiguration()
 {
-    MaxWasteTime = TimeSpan.FromHours(12),
-    RefereePostTime = TimeSpan.FromMinutes(30),
-    RefereePrepTime = TimeSpan.FromMinutes(45),
+    MaxWasteTime = TimeSpan.FromHours(6),
+    RefereePostTime = TimeSpan.FromMinutes(60),
+    RefereePrepTime = TimeSpan.FromMinutes(90),
     DistanceFactor = 1.0,
     OverRankFactor = 1.0,
-    UnderRankFactor = 1.0,
-    UnassignedCost = 100_000.0,
-    MaxBoundGap = 10.0
+    UnderRankFactor = 1.0,  
+    UnassignedCost = 1_000_000.0,
+    RelativeGap = 0.01
 };
 
 /*
@@ -73,7 +109,8 @@ BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
-    timeLimit: TimeSpan.FromSeconds(20) // omezeni casu behu B&B
+    config,
+    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
 );
 
 
@@ -81,7 +118,12 @@ HCSolver hcSolver = new HCSolver(
     referees,
     conflictChecker,
     costCalculator
-);
+)
+{
+    MaxAttempts = 200,
+    MaxIterations = 3000,
+    MaxMoves = 80
+};
 
 Stopwatch sw = new Stopwatch();
 
