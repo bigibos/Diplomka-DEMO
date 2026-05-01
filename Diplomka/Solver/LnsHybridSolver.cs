@@ -208,11 +208,10 @@ namespace Diplomka.Solver
         /// </summary>
         private State RepairWithBB(List<Slot> relaxed, List<Referee> available)
         {
-            var bbSolver = new BBSolver(
+            var bbSolver = new BBSolverOLD(
                 available,
                 _conflictChecker,
                 _costCalculator,
-                _config,
                 timeLimit: BbIterationTimeLimit
             );
 

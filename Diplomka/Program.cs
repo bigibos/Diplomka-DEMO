@@ -47,8 +47,8 @@ referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
  */
 ScenerioGenerator gen = new ScenerioGenerator
 {
-    SlotsNumber = 60,
-    RefereeNumber = 35,
+    SlotsNumber = 300,
+    RefereeNumber = 150,
     DayClustering = 0.4,
     LocationClustering = 0.5,
     OverlapProbability = 0.05,
@@ -124,8 +124,8 @@ var costCalculator = new CostCalculator(distanceTable, config);
 var hybridSolver = new LnsHybridSolver(
     referees, conflictChecker, costCalculator, config)
 {
-    NeighborhoodSize = 10,
-    MaxIterations = 200,
+    NeighborhoodSize = 20,
+    MaxIterations = 300,
     SwitchAfterNoImprovement = 20,
     BbIterationTimeLimit = TimeSpan.FromSeconds(2),
     HcAttempts = 5,
@@ -145,8 +145,8 @@ var lnsSolver = new LnsBbSolver(
     config
 )
 {
-    NeighborhoodSize = 10,     // počet slotů k uvolnění per iteraci
-    MaxIterations = 150,    // celkový počet iterací
+    NeighborhoodSize = 20,     // počet slotů k uvolnění per iteraci
+    MaxIterations = 300,    // celkový počet iterací
     NoImprovementLimit = 30,     // restart po X neúspěších
     IterationTimeLimit = TimeSpan.FromSeconds(2), // limit mini B&B
     Strategy = LnsBbSolver.NeighborhoodStrategy.CostWeighted
@@ -155,14 +155,27 @@ var lnsSolver = new LnsBbSolver(
 
 /*
  * ---------------------------------------
- * Inicializace Branch & Bound
+ * Inicializace Branch & Bound (mega optimalizace)
  * ---------------------------------------
  */
-BBSolver bbSolver = new BBSolver(
+var bbSolverOpt = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
     config,
+    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
+);
+
+
+/*
+ * ---------------------------------------
+ * Inicializace Branch & Bound (puvodni verze)
+ * ---------------------------------------
+ */
+var bbSolver = new BBSolverOLD(
+    referees,
+    conflictChecker,
+    costCalculator,
     timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
 );
 
@@ -171,7 +184,7 @@ BBSolver bbSolver = new BBSolver(
  * Inicializace Hill Climbing
  * ---------------------------------------
  */
-HCSolver hcSolver = new HCSolver(
+var hcSolver = new HCSolver(
     referees,
     conflictChecker,
     costCalculator
@@ -223,6 +236,18 @@ CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB, routeSolver);
 
 Console.WriteLine("==============================================================");
 Console.WriteLine();
+Console.WriteLine("                  Spoustim Branch & Bound (optim)...");
+Console.WriteLine();
+Console.WriteLine("==============================================================");
+
+sw.Restart();
+State resultBBOpt = bbSolverOpt.Solve(slots);
+sw.Stop();
+var bbOptTime = sw.ElapsedMilliseconds;
+CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBBOpt, routeSolver);
+
+Console.WriteLine("==============================================================");
+Console.WriteLine();
 Console.WriteLine("                  Spoustim Hill Climbing...");
 Console.WriteLine();
 Console.WriteLine("==============================================================");
@@ -259,7 +284,16 @@ Console.WriteLine($"| Čas                  | {($"{lnsTime} ms"),-28} |");
 Console.WriteLine("+----------------------+------------------------------+");
 
 Console.WriteLine();
-Console.WriteLine("Branch & Bound");
+Console.WriteLine("Branch & Bound (optim)");
+Console.WriteLine("+----------------------+------------------------------+");
+Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultBBOpt),-28:F2} |");
+Console.WriteLine($"| Prázdné sloty        | {resultBBOpt.GetEmptySlots().Count(),-28} |");
+Console.WriteLine($"| Prozkoumáno uzlů     | {bbSolverOpt.NodesExplored,-28} |");
+Console.WriteLine($"| Čas                  | {($"{bbOptTime} ms"),-28} |");
+Console.WriteLine("+----------------------+------------------------------+");
+
+Console.WriteLine();
+Console.WriteLine("Branch & Bound (basic)");
 Console.WriteLine("+----------------------+------------------------------+");
 Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultBB),-28:F2} |");
 Console.WriteLine($"| Prázdné sloty        | {resultBB.GetEmptySlots().Count(),-28} |");

@@ -147,11 +147,10 @@ namespace Diplomka.Solver
                 }
 
                 // ── Repair: mini B&B optimalizuje k slotů ─────────────────────────
-                var miniSolver = new BBSolver(
+                var miniSolver = new BBSolverOLD(
                     available,
                     _conflictChecker,
                     _costCalculator,
-                    _config,
                     timeLimit: IterationTimeLimit
                 );
 
