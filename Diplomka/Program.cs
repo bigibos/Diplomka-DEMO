@@ -31,9 +31,20 @@ string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.
 List<Slot> slots = new List<Slot>();
 List<Referee> referees = new List<Referee>();
 
-// slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb_2.csv");
-// referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
+/*
+ * ---------------------------------------
+ * Import dat - pokud data nejsou generovana
+ * ---------------------------------------
+ */
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb_2.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
 
+
+/*
+ * ---------------------------------------
+ * Inicializace generatoru scenaru
+ * ---------------------------------------
+ */
 ScenerioGenerator gen = new ScenerioGenerator
 {
     SlotsNumber = 60,
@@ -59,21 +70,16 @@ ScenerioGenerator gen = new ScenerioGenerator
 var dateFrom = new DateTime(2025, 3, 1, 8, 0, 0);
 var dateTo = new DateTime(2025, 3, 7, 20, 0, 0);
 
-slots = gen.GenerateSlots(dateFrom, dateTo);
-referees = gen.GenerateReferess();
+// slots = gen.GenerateSlots(dateFrom, dateTo);
+// referees = gen.GenerateReferess();
 
-/*
-foreach(var s in slots)
-    Console.WriteLine(s);
-
-foreach (var r in referees)
-    Console.WriteLine(r);
-*/
 
 Console.WriteLine($"Načteno {referees.Count} rozhodčích a {slots.Count} slotů.");
 
 /*
- * Hlavni konfigurace
+ * ---------------------------------------
+ * Inicializace hlavni konfigurace
+ * ---------------------------------------
  */
 var config = new SolverConfiguration()
 {
@@ -88,7 +94,9 @@ var config = new SolverConfiguration()
 };
 
 /*
- * Geolokace a budovani tabulky tras
+ * ---------------------------------------
+ * Geolokace a inicializace tabulky tras
+ * ---------------------------------------
  */
 var slotLocations = slots.Select(s => s.Location).Distinct().ToList();
 var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
@@ -98,22 +106,71 @@ var distanceTable = new DistanceTable();
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
 await distanceTable.Initialize(allLocations);
 
+
+/*
+ * ---------------------------------------
+ * Inicializace pomocnych trid a solveru
+ * ---------------------------------------
+ */
 var routeSolver = new RouteSolver(distanceTable, config);
-
-
 var conflictChecker = new ConflictChecker(distanceTable, config);
 var costCalculator = new CostCalculator(distanceTable, config);
 
+/*
+ * ---------------------------------------
+ * Inicializace Hybrid
+ * ---------------------------------------
+ */
+var hybridSolver = new LnsHybridSolver(
+    referees, conflictChecker, costCalculator, config)
+{
+    NeighborhoodSize = 10,
+    MaxIterations = 200,
+    SwitchAfterNoImprovement = 20,
+    BbIterationTimeLimit = TimeSpan.FromSeconds(2),
+    HcAttempts = 5,
+    HcIterations = 200,
+    HcMoves = 30
+};
 
+/*
+ * ---------------------------------------
+ * Inicializace LNS
+ * ---------------------------------------
+ */
+var lnsSolver = new LnsBbSolver(
+    referees,
+    conflictChecker,
+    costCalculator,
+    config
+)
+{
+    NeighborhoodSize = 10,     // počet slotů k uvolnění per iteraci
+    MaxIterations = 150,    // celkový počet iterací
+    NoImprovementLimit = 30,     // restart po X neúspěších
+    IterationTimeLimit = TimeSpan.FromSeconds(2), // limit mini B&B
+    Strategy = LnsBbSolver.NeighborhoodStrategy.CostWeighted
+};
+
+
+/*
+ * ---------------------------------------
+ * Inicializace Branch & Bound
+ * ---------------------------------------
+ */
 BBSolver bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
     config,
-    timeLimit: TimeSpan.FromSeconds(60*5) // omezeni casu behu B&B
+    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
 );
 
-
+/*
+ * ---------------------------------------
+ * Inicializace Hill Climbing
+ * ---------------------------------------
+ */
 HCSolver hcSolver = new HCSolver(
     referees,
     conflictChecker,
@@ -127,45 +184,97 @@ HCSolver hcSolver = new HCSolver(
 
 Stopwatch sw = new Stopwatch();
 
+Console.WriteLine("==============================================================");
+Console.WriteLine();
+Console.WriteLine("                  Spoustim Hybrid (LNS + BB + HC)...");
+Console.WriteLine();
+Console.WriteLine("==============================================================");
+
+sw.Restart();
+State resultHybrid = hybridSolver.Solve(slots);
+sw.Stop();
+var hybridTime = sw.ElapsedMilliseconds;
+CsvExporter.SaveState($"{rootDirectory}\\resultHYB.csv", resultHybrid, routeSolver);
+
+Console.WriteLine("==============================================================");
+Console.WriteLine();
+Console.WriteLine("                  Spoustim Branch & Bound (LNS)...");
+Console.WriteLine();
+Console.WriteLine("==============================================================");
+
+sw.Restart();
+State resultLNS = lnsSolver.Solve(slots);
+sw.Stop();
+var lnsTime = sw.ElapsedMilliseconds;
+CsvExporter.SaveState($"{rootDirectory}\\resultLNS.csv", resultLNS, routeSolver);
+
+
+Console.WriteLine("==============================================================");
+Console.WriteLine();
+Console.WriteLine("                  Spoustim Branch & Bound (zakladni)...");
+Console.WriteLine();
+Console.WriteLine("==============================================================");
+
 sw.Restart();
 State resultBB = bbSolver.Solve(slots);
 sw.Stop();
-
-Console.WriteLine("Rešení pomocí Branch & Bound:");
-Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(resultBB):F2}");
-Console.WriteLine($"Prázdné sloty:      {resultBB.GetEmptySlots().ToList().Count}");
-Console.WriteLine($"Prozkoumáno uzlů:   {bbSolver.NodesExplored}");
-Console.WriteLine($"Hotovo za:          {sw.ElapsedMilliseconds} ms");
-
+var bbTime = sw.ElapsedMilliseconds;
 CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB, routeSolver);
 
-/*
-Console.WriteLine("Spoustim week solver");
-var weekSolver = new WeeklyDecompositionSolver(referees, conflictChecker, costCalculator);
-sw.Restart();
-State result = weekSolver.Solve(slots);
-sw.Stop();
-// State result = await weekSolver.RunParallelAsync(slots);
-CsvExporter.SaveState($"{rootDirectory}\\result.csv", result, routeSolver);
-
-Console.WriteLine("Řešení pomocí Weekly B&B:");
-Console.WriteLine($"Cena: {costCalculator.TotalCost(result)}");
-*/
-
-
-
-Console.WriteLine("\n--------------------------------------------------\n");
+Console.WriteLine("==============================================================");
+Console.WriteLine();
+Console.WriteLine("                  Spoustim Hill Climbing...");
+Console.WriteLine();
+Console.WriteLine("==============================================================");
 
 sw.Restart();
 State resultHC = hcSolver.Solve(slots);
 sw.Stop();
-
-Console.WriteLine("Řešení pomocí Hill Climbing:");
-Console.WriteLine($"Celková cena:       {costCalculator.TotalCost(resultHC):F2}");
-Console.WriteLine($"Prázdné sloty:      {resultHC.GetEmptySlots().ToList().Count}");
-Console.WriteLine($"Hotovo za:          {sw.ElapsedMilliseconds} ms");
-
 CsvExporter.SaveState($"{rootDirectory}\\resultHC.csv", resultHC, routeSolver);
+var hcTime = sw.ElapsedMilliseconds;
+
+Console.WriteLine("==============================================================");
+Console.WriteLine();
+Console.WriteLine("                  VÝSLEDKY ALGORITMŮ");
+Console.WriteLine();
+Console.WriteLine("==============================================================");
+
+Console.WriteLine();
+Console.WriteLine("Hybrid (LNS + BB + HC)");
+Console.WriteLine("+----------------------+------------------------------+");
+Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultHybrid),-28:F2} |");
+Console.WriteLine($"| Prázdné sloty        | {resultHybrid.GetEmptySlots().Count(),-28} |");
+Console.WriteLine($"| Zlepšující iterace BB| {($"{hybridSolver.BbImprovements}/{hybridSolver.TotalIterations}"),-28} |");
+Console.WriteLine($"| Zlepšující iterace HC| {($"{hybridSolver.HcImprovements}/{hybridSolver.TotalIterations}"),-28} |");
+Console.WriteLine($"| Čas                  | {($"{hybridTime} ms"),-28} |");
+Console.WriteLine("+----------------------+------------------------------+");
+
+Console.WriteLine();
+Console.WriteLine("Branc & Bound (LNS)");
+Console.WriteLine("+----------------------+------------------------------+");
+Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultLNS),-28:F2} |");
+Console.WriteLine($"| Prázdné sloty        | {resultLNS.GetEmptySlots().Count(),-28} |");
+Console.WriteLine($"| Zlepšující iterace   | {($"{lnsSolver.ImprovingIterations}/{lnsSolver.TotalIterations}"),-28} |");
+Console.WriteLine($"| Čas                  | {($"{lnsTime} ms"),-28} |");
+Console.WriteLine("+----------------------+------------------------------+");
+
+Console.WriteLine();
+Console.WriteLine("Branch & Bound");
+Console.WriteLine("+----------------------+------------------------------+");
+Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultBB),-28:F2} |");
+Console.WriteLine($"| Prázdné sloty        | {resultBB.GetEmptySlots().Count(),-28} |");
+Console.WriteLine($"| Prozkoumáno uzlů     | {bbSolver.NodesExplored,-28} |");
+Console.WriteLine($"| Čas                  | {($"{bbTime} ms"),-28} |");
+Console.WriteLine("+----------------------+------------------------------+");
+
+Console.WriteLine();
+Console.WriteLine("Hill Climbing");
+Console.WriteLine("+----------------------+------------------------------+");
+Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultHC),-28:F2} |");
+Console.WriteLine($"| Prázdné sloty        | {resultHC.GetEmptySlots().Count(),-28} |");
+Console.WriteLine($"| Čas                  | {($"{hcTime} ms"),-28} |");
+Console.WriteLine("+----------------------+------------------------------+");
+
 
 
 

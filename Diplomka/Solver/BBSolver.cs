@@ -132,6 +132,25 @@ namespace Diplomka.Solver
         // Předalokované pole kandidátů pro každou hloubku DFS (žádný List/LINQ v horké smyčce)
         private int[][] _candidateBuffers = Array.Empty<int[]>();  // [depth][k] = index ref kandidáta
 
+        // ─── Inkrementální skutečná cena (per-rozhodčí) ──────────────────────────
+        //
+        // Statická LB (_lbRemainder) a skutečná UB (_bestActualCost) jsou různé veličiny
+        // a jejich přímé porovnání způsobovalo nepřípustné ořezávání.
+        // Řešení: udržujeme _actualCostSoFar inkrementálně.
+        // LB = _actualCostSoFar + _lbRemainder je přípustná pokud
+        // static_minCost <= skutečná_marginální_cena (platí pro izolovaný routing).
+
+        // Per-rozhodčí seřazený seznam přiřazených slotů (index do _slots[])
+        private List<int>[] _refSlots = Array.Empty<List<int>>();
+        // Aktuální skutečná cena každého rozhodčího
+        private double[] _refActualCost = Array.Empty<double>();
+        // Součet _refActualCost = inkrementální skutečná cena přiřazení dosud
+        private double _actualCostSoFar;
+        // Journal pro backtrack skutečné ceny
+        private int[] _journalAffectedRef = Array.Empty<int>();
+        private double[] _journalOldRefCost = Array.Empty<double>();
+        private double[] _journalOldActualCost = Array.Empty<double>();
+
         // ─── Konstruktor ──────────────────────────────────────────────────────────
         public BBSolver(
             IEnumerable<Referee> referees,
@@ -155,14 +174,13 @@ namespace Diplomka.Solver
             _bestState = (State)state.Clone();
             _bestActualCost = _costCalculator.TotalCost(state);
 
-            // Statické UB = součet AssignmentCost přiřazených slotů
-            //             + UnassignedCost * počet prázdných slotů.
-            // B&B ve skip větvi platí stejnou penalizaci za každý přeskočený slot,
-            // takže LB i UB jsou ve stejném "statickém světě" → ořezávání je přípustné.
+            // UB pro pruning = skutečná cena warm startu + skip penalizace.
+            // LB = _actualCostSoFar (skutečná) + _lbRemainder (statická dolní mez zbytku).
+            // Díky inkrementálnímu sledování skutečné ceny není potřeba 1.15 tolerance.
             int emptyCount = state.GetEmptySlots().Count();
-            _bestStaticCost = ComputeStaticCost(state) + emptyCount * _config.UnassignedCost;
+            _bestStaticCost = _bestActualCost + emptyCount * _config.UnassignedCost;
 
-            Console.WriteLine($"[B&B] Warm start - Skutečná: {_bestActualCost:F2} | Statická UB (přiřazení + {emptyCount}×skip): {_bestStaticCost:F2}");
+            Console.WriteLine($"[B&B] Warm start - Skutečná: {_bestActualCost:F2} | UB pro pruning: {_bestStaticCost:F2}");
             return RunBB(state.GetSlots());
         }
 
@@ -185,14 +203,13 @@ namespace Diplomka.Solver
             _bestState = greedy;
             _bestActualCost = _costCalculator.TotalCost(greedy);
 
-            // Statické UB zahrnuje penalizaci za prázdné sloty – stejně jako skip větev v DFS.
-            // Bez toho by greedy (který sloty přeskakuje zdarma) měl UB ~9090,
-            // zatímco B&B (který přeskočení platí penalizací) by nikdy nepřekoná tak nízké UB.
+            // UB = skutečná cena greedy + penalizace za prázdné sloty.
+            // B&B ve skip větvi platí stejnou UnassignedCost → srovnatelné veličiny.
+            // Díky inkrementálnímu _actualCostSoFar není potřeba 1.15 tolerance.
             var emptySlots = greedy.GetEmptySlots().ToList();
-            _bestStaticCost = ComputeStaticCost(greedy) * 1.15 + emptySlots.Count * _config.UnassignedCost;
+            _bestStaticCost = _bestActualCost + emptySlots.Count * _config.UnassignedCost;
 
-
-            Console.WriteLine($"[B&B] Počáteční cena - Skutečná: {_bestActualCost:F2} | Statická UB (přiřazení + {emptySlots.Count}×skip): {_bestStaticCost:F2}");
+            Console.WriteLine($"[B&B] Počáteční cena - Skutečná: {_bestActualCost:F2} | UB pro pruning: {_bestStaticCost:F2}");
 
 
             return RunBB(slotList);
@@ -297,6 +314,16 @@ namespace Diplomka.Solver
                 _candidateBuffers[d] = new int[_R]; // v nejhorším případě _R kandidátů
             }
 
+            // 6. Per-rozhodčí struktury pro inkrementální skutečnou cenu
+            _refSlots = new List<int>[_R];
+            _refActualCost = new double[_R];
+            for (int j = 0; j < _R; j++)
+                _refSlots[j] = new List<int>(8); // průměrně málo slotů na rozhodčího
+
+            _journalAffectedRef = new int[_S];
+            _journalOldRefCost = new double[_S];
+            _journalOldActualCost = new double[_S];
+
             Console.WriteLine($"[B&B] Předvýpočet hotov. " +
                 $"Prům. překryvů/slot: {(_S > 0 ? _overlaps.Average(o => o.Length) : 0):F1}, " +
                 $"max: {maxOverlaps}");
@@ -325,6 +352,14 @@ namespace Diplomka.Solver
                 _minCost[i] = ComputeSlotMinCost(i);
                 _lbRemainder += _minCost[i];
             }
+
+            // Reset per-rozhodčí skutečné ceny
+            for (int j = 0; j < _R; j++)
+            {
+                _refSlots[j].Clear();
+                _refActualCost[j] = 0.0;
+            }
+            _actualCostSoFar = 0.0;
         }
 
 
@@ -342,11 +377,11 @@ namespace Diplomka.Solver
             NodesExplored++;
 
             // Periodická kontrola časového limitu (každých 10 000 uzlů)
-            if (NodesExplored % 500_000 == 0)
+            if (NodesExplored % 250_000 == 0)
             {
                 Console.WriteLine(
                     $"[B&B] Uzlů: {NodesExplored,10:N0} | hloubka: {depth,4} | " +
-                    $"LB: {costSoFar + _lbRemainder,10:F2} | UB (statická): {_bestStaticCost,10:F2} | " +
+                    $"LB: {_actualCostSoFar + costSoFar + _lbRemainder,10:F2} | UB: {_bestStaticCost,10:F2} | " +
                     $"Empty: {unassigned} | " +
                     $"čas: {(DateTime.UtcNow - _startTime).TotalSeconds:F1}s");
 
@@ -357,18 +392,20 @@ namespace Diplomka.Solver
             if (_timeLimitExceeded) return;
 
 
-            // ── Listový uzel: všechny sloty přiřazeny ────────────────────────────
+            // ── Listový uzel: všechny sloty zpracovány ──────────────────────────────
             if (unassigned == 0)
             {
-                var candidateState = BuildState();
-                double actualCost = _costCalculator.TotalCost(candidateState);
+                // costSoFar = součet UnassignedCost za přeskočené sloty (assign větve ho nemění).
+                // _actualCostSoFar = přesná skutečná cena tras všech přiřazených slotů.
+                // Celková cena = obě složky dohromady.
+                double leafCost = _actualCostSoFar + costSoFar;
 
-                if (actualCost < _bestActualCost) // skutečná, ne statická
+                if (leafCost < _bestStaticCost)
                 {
-                    _bestActualCost = actualCost;
-                    _bestStaticCost = costSoFar * 1.15; // posuň UB podle nového optima
-                    _bestState = candidateState;
-                    Console.WriteLine($"[B&B] -*- Nové optimum! Skutečná: {_bestActualCost:F2} | uzel {NodesExplored:N0}");
+                    _bestStaticCost = leafCost;
+                    _bestActualCost = leafCost;
+                    _bestState = BuildState();
+                    Console.WriteLine($"[B&B] -*- Nové optimum! Skutečná+skip: {leafCost:F2} | uzel {NodesExplored:N0}");
                 }
                 return;
             }
@@ -388,25 +425,33 @@ namespace Diplomka.Solver
                     if (_eligible[slotBase + j])
                         candBuf[cCount++] = j;
 
+                // Řazení podle statické ceny (value ordering – levnější rozhodčí mají větší
+                // šanci vést k lepšímu řešení a budou prozkoumáni dříve).
                 InsertionSortByCost(candBuf, cCount, slotBase);
 
                 for (int ci = 0; ci < cCount; ci++)
                 {
                     int refIdx = candBuf[ci];
-                    double assignCost = _cost[slotBase + refIdx];
-                    double newCost = costSoFar + assignCost;
 
-                    double lbAfterAssign = newCost + (_lbRemainder - _minCost[slotIdx]);
-                    if (lbAfterAssign >= _bestStaticCost * (1.0 - _config.RelativeGap))
+                    // Pre-pruning: odhadneme LB pomocí statické ceny tohoto přiřazení.
+                    // Skutečná cena bude >= statická, takže toto je přípustný dolní odhad.
+                    double staticAssignCost = _cost[slotBase + refIdx];
+                    double lbEstimate = (_actualCostSoFar + staticAssignCost)
+                                      + costSoFar
+                                      + (_lbRemainder - _minCost[slotIdx]);
+                    if (lbEstimate >= _bestStaticCost * (1.0 - _config.RelativeGap))
                         continue; // prune before assign
 
+                    // Assign: aktualizuje _actualCostSoFar, _eligible, _lbRemainder.
+                    // costSoFar se NEMĚNÍ – assign větve nenesou skip penalizaci.
                     Assign(depth, slotIdx, refIdx, out bool forwardOk);
 
                     if (forwardOk)
                     {
-                        double lb = newCost + _lbRemainder;
+                        // Post-pruning s přesnou skutečnou cenou (po Assign ji známe).
+                        double lb = _actualCostSoFar + costSoFar + _lbRemainder;
                         if (lb < _bestStaticCost * (1.0 - _config.RelativeGap))
-                            Dfs(depth + 1, newCost, unassigned - 1);
+                            Dfs(depth + 1, costSoFar, unassigned - 1); // costSoFar beze změny
                     }
 
                     Unassign(depth, slotIdx, refIdx);
@@ -416,22 +461,18 @@ namespace Diplomka.Solver
             }
 
             // ── Skip větev: slot zůstane nepřiřazený, platíme UnassignedCost ─────
-            // Tato větev je klíčová: greedy také sloty přeskakuje, takže B&B musí mít
-            // stejnou možnost – jinak soutěží za jiných pravidel a nikdy greedy nepřekoná.
-            // Slot ponecháme s _assigned[slotIdx] == -1, jen ho vyjmeme z "unassigned" množiny.
+            // costSoFar kumuluje skip penalizace; _actualCostSoFar sleduje skutečné tras. náklady.
             {
                 double skipCost = costSoFar + _config.UnassignedCost;
-                double lbAfterSkip = skipCost + (_lbRemainder - _minCost[slotIdx]);
+                double lbAfterSkip = _actualCostSoFar + skipCost + (_lbRemainder - _minCost[slotIdx]);
                 if (lbAfterSkip < _bestStaticCost * (1.0 - _config.RelativeGap))
                 {
-                    // Dočasně označíme slot jako zpracovaný (ale nepřiřazený)
                     double savedMinCost = _minCost[slotIdx];
                     _unassigned[slotIdx] = false;
                     _lbRemainder -= savedMinCost;
 
-                    Dfs(depth + 1, skipCost, unassigned - 1);
+                    Dfs(depth + 1, skipCost, unassigned - 1); // skipCost nese penalizaci
 
-                    // Backtrack
                     _unassigned[slotIdx] = true;
                     _lbRemainder += savedMinCost;
                 }
@@ -440,7 +481,7 @@ namespace Diplomka.Solver
 
         // ─── MRV výběr slotu (O(S), žádné extern. volání) ─────────────────────────
 
-        private int SelectMrvSlot_Old()
+        private int SelectMrvSlot()
         {
             int best = -1;
             int bestCnt = int.MaxValue;
@@ -464,32 +505,6 @@ namespace Diplomka.Solver
             }
 
             return best; // -1 pokud žádný nepřiřazený slot (nekane se stát pokud unassigned > 0)
-        }
-
-        private int SelectMrvSlot()
-        {
-            int best = -1;
-            double bestScore = double.MaxValue;
-
-            for (int i = 0; i < _S; i++)
-            {
-                if (!_unassigned[i]) continue;
-
-                int cnt = _eligCnt[i];
-                if (cnt == 0) return i; // okamžitě – mrtvá větev nebo skip
-
-                // Skóre = (počet kandidátů) × (počet aktivních překryvů)
-                // Nízké skóre = málo kandidátů A málo dopad na ostatní
-                int activeOverlaps = _overlaps[i].Count(o => _unassigned[o]);
-                double score = cnt * (1 + activeOverlaps);
-
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best = i;
-                }
-            }
-            return best;
         }
 
         // ─── Assign: přiřazení + inkrementální update ────────────────────────────
@@ -564,6 +579,25 @@ namespace Diplomka.Solver
             }
 
             _journalLen[depth] = journalLen;
+
+            // ── Inkrementální skutečná cena ──────────────────────────────────────────
+            // Uložíme starý stav do journalu, pak přidáme slot do per-ref seznamu
+            // a přepočítáme skutečnou cenu pouze pro tohoto rozhodčího.
+            _journalAffectedRef[depth] = refIdx;
+            _journalOldRefCost[depth] = _refActualCost[refIdx];
+            _journalOldActualCost[depth] = _actualCostSoFar;
+
+            // Seřazený insert podle Start času
+            int insertPos = 0;
+            while (insertPos < _refSlots[refIdx].Count &&
+                   _slots[_refSlots[refIdx][insertPos]].Start <= _slots[slotIdx].Start)
+                insertPos++;
+            _refSlots[refIdx].Insert(insertPos, slotIdx);
+
+            // Přepočet skutečné ceny rozhodčího (pouze jeho sloty)
+            double newRefCost = ComputeRefereeActualCost(refIdx);
+            _actualCostSoFar += newRefCost - _refActualCost[refIdx];
+            _refActualCost[refIdx] = newRefCost;
         }
 
         // ─── Unassign: backtrack – obnova stavu ───────────────────────────────────
@@ -597,6 +631,11 @@ namespace Diplomka.Solver
                 _minCost[s2] = oldMin;
                 _lbRemainder += oldMin;
             }
+
+            // ── Backtrack skutečné ceny ───────────────────────────────────────────
+            _refSlots[refIdx].Remove(slotIdx); // odstraníme slot ze seřazeného seznamu
+            _refActualCost[refIdx] = _journalOldRefCost[depth];
+            _actualCostSoFar = _journalOldActualCost[depth];
         }
 
         // ─── Pomocné metody ───────────────────────────────────────────────────────
@@ -643,6 +682,27 @@ namespace Diplomka.Solver
                 }
                 buf[j + 1] = key;
             }
+        }
+
+        /// <summary>
+        /// Vypočítá skutečnou cenu rozhodčího <paramref name="refIdx"/> pro jeho aktuálně
+        /// přiřazené sloty (_refSlots[refIdx]). Sestaví dočasný State jen pro tohoto rozhodčího
+        /// a zavolá TotalCost – díky tomu výpočet zahrnuje sdílení tras mezi sloty.
+        /// Volá se v každém uzlu DFS (při Assign), ale jen pro jednoho rozhodčího → O(k) kde
+        /// k = počet jeho slotů, typicky malé číslo.
+        /// </summary>
+        private double ComputeRefereeActualCost(int refIdx)
+        {
+            var slots = _refSlots[refIdx];
+            if (slots.Count == 0) return 0.0;
+
+            var tempState = new State();
+            foreach (int si in slots)
+            {
+                tempState.AddSlot(_slots[si]);
+                tempState.SetReferee(_slots[si], _refs[refIdx]);
+            }
+            return _costCalculator.TotalCost(tempState);
         }
 
         /// <summary>
