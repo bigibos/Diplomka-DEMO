@@ -2,20 +2,6 @@ using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
-    /// <summary>
-    /// Opravná heuristika – zajišťuje, že žádný slot nezůstane bez rozhodčího.
-    ///
-    /// Používá se po greedy fázi, pokud greedy nestihlo obsadit všechny sloty.
-    ///
-    /// Strategie:
-    ///   Pro každý prázdný slot:
-    ///     1. Zkus najít způsobilého rozhodčího bez konfliktu (standardní cesta).
-    ///     2. Pokud nikdo není volný: najdi rozhodčího, jehož přesunutím
-    ///        konfliktnaje přiřazení uvolníme – tzv. chain-repair.
-    ///     3. Pokud ani to nepomůže: přiřaď nejlepšího způsobilého rozhodčího
-    ///        s ignorováním časové kolize a zaloguj varování
-    ///        (v praxi by to signalizovalo nedostatek rozhodčích v daném časovém okně).
-    /// </summary>
     public class RepairHeuristic
     {
         private readonly List<Referee> _referees;
@@ -38,7 +24,7 @@ namespace Diplomka.Solver
         {
             var current = (State)state.Clone();
 
-            // Iterujeme dokud existují prázdné sloty (max N průchodů jako pojistka)
+            // Iterujeme dokud exituji prazdne sloty
             int maxPasses = 3;
             for (int pass = 0; pass < maxPasses; pass++)
             {

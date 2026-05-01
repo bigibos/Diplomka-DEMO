@@ -3,9 +3,6 @@ using Diplomka.Routing;
 
 namespace Diplomka.Solver
 {
-    /// <summary>
-    /// Pomocné metody pro detekci časových konfliktů.
-    /// </summary>
     public class ConflictChecker
     {
 
@@ -19,9 +16,10 @@ namespace Diplomka.Solver
         }
 
 
-        /// <summary>
-        /// Vrátí true, pokud se dva sloty časově překrývají.
-        /// </summary>
+        /*
+         * Vraci true kdyz se dva sloty casove prekryvaji
+         * Bere v potaz i dobu cestovani a casove konstanty
+         */
         public bool Overlaps(Slot a, Slot b)
         {
             // Ktery slot zacina driv
@@ -52,11 +50,10 @@ namespace Diplomka.Solver
             return false;
         }
 
-        /// <summary>
-        /// Vrátí true, pokud lze rozhodčímu přiřadit daný slot,
-        /// aniž by došlo ke kolizi s již přiřazenými sloty v daném stavu.
-        /// Zároveň ověřuje, že hodnost rozhodčího splňuje minimální požadavek slotu.
-        /// </summary>
+        /*
+         * Kontrola jestli deochazi u avizovaneho prirazeni ke konfliktu v ramci stavu
+         * Pokud existuje konflikt vraci false
+         */
         public bool CanAssign(State state, Slot slot, Referee referee)
         {
             // Kontrola hodnosti
@@ -74,10 +71,9 @@ namespace Diplomka.Solver
             return true;
         }
 
-        /// <summary>
-        /// Vrátí seznam rozhodčích, kteří mohou být přiřazeni k danému slotu
-        /// (splňují hodnost a nemají kolizi).
-        /// </summary>
+        /*
+         * Vraci zpusobile rozhodci bez kolizi pro dany slot - kandidati
+         */
         public List<Referee> GetEligibleReferees(State state, Slot slot, IReadOnlyList<Referee> referees)
         {
             return referees.Where(r => CanAssign(state, slot, r)).ToList();

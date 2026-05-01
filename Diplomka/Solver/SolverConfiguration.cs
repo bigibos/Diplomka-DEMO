@@ -8,25 +8,23 @@ namespace Diplomka.Solver
 {
     public class SolverConfiguration
     {
-        public double RelativeGap { get; set; } = 0.0;
 
         /*
          * Parametry pro cas potrebny pred zapasem (priprava) a po zapase (uzavreni)
          */
         public TimeSpan RefereePrepTime { get; set; } = TimeSpan.FromMinutes(90);
-        public TimeSpan RefereePostTime { get; set;} = TimeSpan.FromMinutes(120);
+        public TimeSpan RefereePostTime { get; set;} = TimeSpan.FromMinutes(60);
 
 
         /*
          * Maximalni mozny promarneny cas
          * Vyuziva se k rozhodovani, jestli bude rozhodci cestovat ze sveho zazemi, nebo z akt. slotu
          */
-        public TimeSpan MaxWasteTime { get; set; } = TimeSpan.FromHours(4);
+        public TimeSpan MaxWasteTime { get; set; } = TimeSpan.FromHours(6);
 
         /*
          * Vahove koeficienty manipulaci pocitane ceny
          */
-        public double RankFactor { get; set; } = 1.0; // Jakou vahu rozdil v urovni
         public double DistanceFactor { get; set; } = 1.0; // Jakou vahu ma vzdalenost
         public double UnderRankFactor { get; set; } = 1.0; // Jakou vahu ma nekvalifikovanost
         public double OverRankFactor { get; set; } = 1.0; // Jakou vahu ma prekvalifikovanost

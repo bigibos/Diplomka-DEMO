@@ -3,6 +3,11 @@ using Diplomka.Solver;
 
 namespace Diplomka.Solver
 {
+    /*
+     * Stochasticky algoritmus - heuristika
+     * Modifikovana verze typickeho HC algoritmu
+     * Reseni v kazdem behu je jine, spoleha se na nahodovost
+     */
     public class HCSolver : ISolver
     {
         private readonly List<Referee> _referees;
@@ -30,25 +35,26 @@ namespace Diplomka.Solver
             _costCalculator = costCalculator;
         }
 
-        // Validní počáteční stav — greedy, ne náhodný
+        // Pocatecni stav - pomoci greedy
         private State InitialState(List<Slot> slots)
         {
             return new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
         }
 
-        // Tah respektující omezení — vymění rozhodčího za způsobilého náhradníka
+        // Vymena rozhodcich - respektuje kolize
         private void ApplyRandomMove(State state)
         {
             var slots = state.GetSlots();
-            // Vyber náhodný slot a zkus najít jiného způsobilého rozhodčího
-            var slot = slots[_random.Next(slots.Count)];
-            state.ClearSlot(slot); // uvolni slot, aby byl znovu přiřaditelný
 
+            // Vybere se nahodny slot pro ktery provadime zmenu
+            var slot = slots[_random.Next(slots.Count)];
+            state.ClearSlot(slot);
+
+            // Vybere se nahodny existujici kandidat pro dany slot
             var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
             if (eligible.Count > 0)
-            {
                 state.SetReferee(slot, eligible[_random.Next(eligible.Count)]);
-            }
+            
         }
 
         public State Solve(State state)

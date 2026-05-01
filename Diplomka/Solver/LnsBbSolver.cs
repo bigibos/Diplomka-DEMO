@@ -34,6 +34,7 @@ namespace Diplomka.Solver
     ///   lokální optimum v daném neighbourhoodu.
     ///
     /// </summary>
+    /// 
     public class LnsBbSolver : ISolver
     {
         // ─── Závislosti ───────────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ namespace Diplomka.Solver
                 }
 
                 // ── Repair: mini B&B optimalizuje k slotů ─────────────────────────
-                var miniSolver = new BBSolverOLD(
+                var miniSolver = new BBSolver(
                     available,
                     _conflictChecker,
                     _costCalculator,

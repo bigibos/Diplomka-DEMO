@@ -2,16 +2,10 @@ using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
-    /// <summary>
-    /// Greedy heuristika pro rychlé sestavení počátečního řešení.
-    ///
-    /// Strategie:
-    ///   1. Seřaď sloty sestupně podle RequiredRank (nejtěžší sloty obsazujeme první –
-    ///      pro ně je nejméně způsobilých rozhodčích).
-    ///   2. Pro každý slot vyber způsobilého rozhodčího s nejnižší cenou přiřazení.
-    ///
-    /// Složitost: O(S × R) kde S = počet slotů, R = počet rozhodčích.
-    /// </summary>
+
+    /*
+     * Seradi sloty podle potrebne urovne a snazi se nejmin priradit sloty pro ktere je nejmin kandidatu
+     */
     public class GreedySolver : ISolver
     {
         private readonly List<Referee> _referees;
@@ -39,8 +33,7 @@ namespace Diplomka.Solver
         {
             var state = new State();
 
-            // Seřaď sloty: nejprve nejnáročnější (vysoký required rank),
-            // při shodě seřaď chronologicky
+            // Serazeni slotu podle potrebne urovne
             var orderedSlots = slots
                 .OrderByDescending(s => s.RequiredRank)
                 .ThenBy(s => s.Start)
@@ -51,16 +44,14 @@ namespace Diplomka.Solver
 
             foreach (var slot in orderedSlots)
             {
-                // Najdi způsobilé rozhodčí (hodnost + bez časové kolize)
+                // Ziskani kandidatu - bez kolize
                 var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
 
-                if (eligible.Count == 0)
-                {
-                    // Slot zůstane prázdný – opraví RepairHeuristic
-                    continue;
-                }
 
-                // Vyber rozhodčího s nejnižší cenou přiřazení
+                if (eligible.Count == 0)
+                    continue;
+
+                // Vyber rozhodciho s nejnizsi cenou prirazeni
                 var best = eligible
                     .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
                     .First();

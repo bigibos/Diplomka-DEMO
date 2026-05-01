@@ -9,10 +9,18 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Solver
 {
+    /*
+     * Hlavni stav prirazeni rozhodcich do slotu
+     */
     public class State : IEnumerable<KeyValuePair<Slot, Referee?>>, ICloneable
     {
+        // Hlavni struktura pro prirazeni
         private Dictionary<Slot, Referee?> _assignments = new();
+
+        // Pomocna struktura pro uchovavani slotu, ktere ma rozhodci
         private Dictionary<Referee, List<Slot>> _refereeToSlots = new();
+
+        // Pomocna struktura pro uchovavani prazdnych slotu
         private HashSet<Slot> _emptySlots = new();
 
 

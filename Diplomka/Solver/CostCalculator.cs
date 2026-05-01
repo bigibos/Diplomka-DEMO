@@ -4,10 +4,6 @@ using System.Collections.Generic;
 
 namespace Diplomka.Solver
 {
-    /// <summary>
-    /// Vypočítává cenu přiřazení rozhodčího ke slotu.
-    /// Cena = váhovaný součet absolutního rozdílu hodnosti a vzdálenosti v km.
-    /// </summary>
     public class CostCalculator
     {
        
@@ -25,13 +21,20 @@ namespace Diplomka.Solver
         /*
          * Vypocet ceny prirazeni rozhodciho ke slotu
          * Vyuziva se primitivni zpusob na vypocet vzdalenosti - vzdy ze zazemi rozhodciho
+         * Nepouziva stav pro kontext - je slepy
          */
         public double AssignmentCost(Slot slot, Referee? referee)
         {
+
+            /*
+             * Nastaveni vahy ranku
+             * Muze byt prekvalifikovany, nebo podkavlifikovany
+             */
+            double rankFactor = referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
             double distance = _distanceTable.GetRouteInfo(referee.Location, slot.Location!).DistanceKm;
-            return _config.RankFactor * rankDiff + _config.DistanceFactor * distance;
+            return rankFactor * rankDiff + _config.DistanceFactor * distance;
         }
 
         /*
@@ -43,6 +46,10 @@ namespace Diplomka.Solver
             if (referee == null)
                 return _config.UnassignedCost;
 
+            /*
+             * Nastaveni vahy ranku
+             * Muze byt prekvalifikovany, nebo podkavlifikovany
+             */
             double rankFactor = referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 

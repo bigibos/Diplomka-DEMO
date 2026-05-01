@@ -42,7 +42,7 @@ namespace Diplomka.Solver
 
         // ─── Konfigurace ──────────────────────────────────────────────────────────
 
-        /// <summary>Počet slotů uvolňovaných v každé iteraci.</summary>
+        /// Pocet slotu uvolnovanych v iteraci
         public int NeighborhoodSize { get; set; } = 10;
 
         /// <summary>Maximální počet iterací LNS.</summary>
@@ -208,7 +208,7 @@ namespace Diplomka.Solver
         /// </summary>
         private State RepairWithBB(List<Slot> relaxed, List<Referee> available)
         {
-            var bbSolver = new BBSolverOLD(
+            var bbSolver = new BBSolver(
                 available,
                 _conflictChecker,
                 _costCalculator,

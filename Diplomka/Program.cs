@@ -36,8 +36,8 @@ List<Referee> referees = new List<Referee>();
  * Import dat - pokud data nejsou generovana
  * ---------------------------------------
  */
-slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_comb_2.csv");
-referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_comb_2.csv");
+slots = CsvImporter.LoadSlots($"{rootDirectory}\\slots_nbl.csv");
+referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_nbl.csv");
 
 
 /*
@@ -90,7 +90,7 @@ var config = new SolverConfiguration()
     OverRankFactor = 1.0,
     UnderRankFactor = 1.0,  
     UnassignedCost = 1_000_000.0,
-    RelativeGap = 0.01
+    RankDiffMargin = 10.0,
 };
 
 /*
@@ -153,26 +153,13 @@ var lnsSolver = new LnsBbSolver(
 };
 
 
-/*
- * ---------------------------------------
- * Inicializace Branch & Bound (mega optimalizace)
- * ---------------------------------------
- */
-var bbSolverOpt = new BBSolver(
-    referees,
-    conflictChecker,
-    costCalculator,
-    config,
-    timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
-);
-
 
 /*
  * ---------------------------------------
- * Inicializace Branch & Bound (puvodni verze)
+ * Inicializace Branch & Bound
  * ---------------------------------------
  */
-var bbSolver = new BBSolverOLD(
+var bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
@@ -224,7 +211,7 @@ CsvExporter.SaveState($"{rootDirectory}\\resultLNS.csv", resultLNS, routeSolver)
 
 Console.WriteLine("==============================================================");
 Console.WriteLine();
-Console.WriteLine("                  Spoustim Branch & Bound (zakladni)...");
+Console.WriteLine("                  Spoustim Branch & Bound");
 Console.WriteLine();
 Console.WriteLine("==============================================================");
 
@@ -234,17 +221,6 @@ sw.Stop();
 var bbTime = sw.ElapsedMilliseconds;
 CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBB, routeSolver);
 
-Console.WriteLine("==============================================================");
-Console.WriteLine();
-Console.WriteLine("                  Spoustim Branch & Bound (optim)...");
-Console.WriteLine();
-Console.WriteLine("==============================================================");
-
-sw.Restart();
-State resultBBOpt = bbSolverOpt.Solve(slots);
-sw.Stop();
-var bbOptTime = sw.ElapsedMilliseconds;
-CsvExporter.SaveState($"{rootDirectory}\\resultBB.csv", resultBBOpt, routeSolver);
 
 Console.WriteLine("==============================================================");
 Console.WriteLine();
@@ -281,15 +257,6 @@ Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultLN
 Console.WriteLine($"| Prázdné sloty        | {resultLNS.GetEmptySlots().Count(),-28} |");
 Console.WriteLine($"| Zlepšující iterace   | {($"{lnsSolver.ImprovingIterations}/{lnsSolver.TotalIterations}"),-28} |");
 Console.WriteLine($"| Čas                  | {($"{lnsTime} ms"),-28} |");
-Console.WriteLine("+----------------------+------------------------------+");
-
-Console.WriteLine();
-Console.WriteLine("Branch & Bound (optim)");
-Console.WriteLine("+----------------------+------------------------------+");
-Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultBBOpt),-28:F2} |");
-Console.WriteLine($"| Prázdné sloty        | {resultBBOpt.GetEmptySlots().Count(),-28} |");
-Console.WriteLine($"| Prozkoumáno uzlů     | {bbSolverOpt.NodesExplored,-28} |");
-Console.WriteLine($"| Čas                  | {($"{bbOptTime} ms"),-28} |");
 Console.WriteLine("+----------------------+------------------------------+");
 
 Console.WriteLine();

@@ -18,13 +18,25 @@ namespace Diplomka.Utils
         public int SlotsNumber { get; set; } = 100;
         public int RefereeNumber { get; set; } = 20;
 
-        // 0 = bez shluku, 1 = extrémní shluky
+        /*
+         * Shlukovani dnu a lokaci.
+         * Kolik procent slotu bude v ramci jednoho dne a v ramci jednoho mista
+         * 
+         * 0 = bez shluku, 1 = extrémní shluky
+         */
         public double DayClustering { get; set; } = 0;
         public double LocationClustering { get; set; } = 0;
 
+        /*
+         * Pravdepodonbost casoveho prekryti slotu a
+         * pravdepodonost potreby elitniho rozhodciho
+         */
         public double OverlapProbability { get; set; } = 0.5;
         public double EliteRefereeProbability { get; set; } = 0.2;
 
+        /*
+         * Distribuce mnoziny rozhodcich na zaklade urovni
+         */
         public List<RankBucket> RefereeRankDistribution { get; set; } = new()
         {
             new RankBucket { Min = 70, Max = 100, Weight = 0.25 },
@@ -32,6 +44,9 @@ namespace Diplomka.Utils
             new RankBucket { Min = 10, Max = 30, Weight = 0.25 }
         };
 
+        /*
+         * Distribuce mnoziny slotu na zaklade potrebnych urovni
+         */
         public List<RankBucket> SlotRankDistribution { get; set; } = new()
         {
             new RankBucket { Min = 70, Max = 100, Weight = 0.25 },
@@ -116,12 +131,12 @@ namespace Diplomka.Utils
 
             for (int i = 0; i < SlotsNumber; i++)
             {
-                // --- DAY ---
+                // Vyber dne
                 DateTime day = (random.NextDouble() < DayClustering)
                     ? hotDays[random.Next(hotDays.Count)]
                     : dateFrom.Date.AddDays(random.Next((dateTo - dateFrom).Days));
 
-                // --- TIME (with overlap) ---
+                // Vyber casu s prekryvem
                 DateTime dateStart;
 
                 if (random.NextDouble() < OverlapProbability && slots.Count > 0)
@@ -134,7 +149,6 @@ namespace Diplomka.Utils
                     dateStart = day.AddMinutes(random.Next(8 * 60, 20 * 60));
                 }
 
-                // clamp
                 if (dateStart < dateFrom)
                     dateStart = dateFrom;
 
@@ -143,7 +157,7 @@ namespace Diplomka.Utils
 
                 var dateEnd = dateStart + TimeSpan.FromHours(2);
 
-                // --- LOCATION ---
+                // Vyber lokace
                 Geo location = (random.NextDouble() < LocationClustering)
                     ? hotLocations[random.Next(hotLocations.Count)]
                     : _locations[random.Next(_locations.Count)];
@@ -169,7 +183,7 @@ namespace Diplomka.Utils
 
             var referees = new List<Referee>();
 
-            var hotLocations = GetHotLocations(random, 5); // 🔥 FIX – mimo loop
+            var hotLocations = GetHotLocations(random, 5);
 
             for (int i = 0; i < RefereeNumber; i++)
             {
