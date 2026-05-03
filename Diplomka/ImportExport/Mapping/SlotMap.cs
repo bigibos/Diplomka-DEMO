@@ -13,6 +13,7 @@ namespace Diplomka.ImportExport.Mapping
         public SlotMap()
         {
             Map(m => m.Id).Name("Id");
+            Map(m => m.Name).Name("Name");
             Map(m => m.RequiredRank).Name("RequiredRank");
             Map(m => m.Lat).Name("Lat");
             Map(m => m.Lon).Name("Lon");

@@ -9,9 +9,10 @@ namespace Diplomka.ImportExport.Dto
 {
     public class StateCsvDto
     {
-        public string Referee { get; set; } = "";
-        public string From { get; set; } = "";
-        public string To { get; set; } = "";
+        public string Slot { get; set; } = String.Empty;
+        public string Referee { get; set; } = String.Empty;
+        public string From { get; set; } = String.Empty;
+        public string To { get; set; } = String.Empty;
 
         public int Rank { get; set; }
         public int RequiredRank { get; set; }
@@ -19,8 +20,8 @@ namespace Diplomka.ImportExport.Dto
 
         public double TravelDistance { get; set; }
         public double TravelTime {  get; set; }
-        public string TravelFrom { get; set; } = "";
-        public string TravelTo { get; set; } = "";
+        public string TravelFrom { get; set; } = String.Empty;
+        public string TravelTo { get; set; } = String.Empty;
         public bool TravelFromHome { get; set; }
     }
 }

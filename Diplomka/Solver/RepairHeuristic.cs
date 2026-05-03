@@ -8,70 +8,74 @@ namespace Diplomka.Solver
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SolverConfiguration _config;
 
         public RepairHeuristic(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
-            CostCalculator costCalculator
+            CostCalculator costCalculator,
+            SolverConfiguration config
             )
         {
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;
+            _config = config;
         }
 
         public State Repair(State state)
         {
             var current = (State)state.Clone();
 
-            // Iterujeme dokud exituji prazdne sloty
-            int maxPasses = 3;
-            for (int pass = 0; pass < maxPasses; pass++)
+            for (int pass = 0; pass < _config.MaxRepairPasses; pass++)
             {
-                var emptySlots = current.GetEmptySlots()
-                    .OrderBy(s => s.RequiredRank)
-                    .ThenBy(s => s.Start)
-                    .ToList();
-
-                if (emptySlots.Count == 0)
-                    break;
-
-                Console.WriteLine($"[Repair] Průchod {pass + 1}, prázdných slotů: {emptySlots.Count}");
+                var emptySlots = GetEmptySlotsOrdered(current);
+                if (emptySlots.Count == 0) break;
 
                 foreach (var slot in emptySlots)
-                {
-                    // Pokus 1: standardní přiřazení
-                    var eligible = _conflictChecker.GetEligibleReferees(current, slot, _referees);
-                    if (eligible.Count > 0)
-                    {
-                        var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
-                        current.SetReferee(slot, best);
-                        continue;
-                    }
-
-                    // Pokus 2: chain-repair
-                    bool repaired = TryChainRepair(current, slot);
-                    if (repaired) continue;
-
-                    // Pokus 3: nouzové přiřazení (ignoruje časovou kolizi)
-                    var fallback = _referees
-                        .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
-                        .FirstOrDefault();
-
-                    if (fallback != null)
-                    {
-                        Console.WriteLine($"[WARN] Nouzové přiřazení (kolize) pro slot {slot}: {fallback.Name}");
-                        current.SetReferee(slot, fallback);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[ERROR] Nelze přiřadit žádného rozhodčího ke slotu {slot}");
-                    }
-                }
+                    TryRepairSlot(current, slot);
             }
 
             return current;
         }
+
+        private void TryRepairSlot(State state, Slot slot)
+        {
+            if (TryStandardAssign(state, slot)) return;
+            if (TryChainRepair(state, slot)) return;
+            TryFallbackAssign(state, slot);
+        }
+
+        private bool TryStandardAssign(State state, Slot slot)
+        {
+            var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
+            if (eligible.Count == 0) return false;
+
+            var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
+            state.SetReferee(slot, best);
+            return true;
+        }
+
+        private bool TryFallbackAssign(State state, Slot slot)
+        {
+            var cfg = _conflictChecker.Config;
+            var fallback = _referees
+                .Where(r => r.Rank + cfg.RankDiffMargin >= slot.RequiredRank &&
+                            state.GetSlotsByReferee(r).Count < cfg.MaxRefereSlots)
+                .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
+                .FirstOrDefault();
+
+            if (fallback == null) return false;
+
+            state.SetReferee(slot, fallback);
+            return true;
+        }
+
+        private List<Slot> GetEmptySlotsOrdered(State state) =>
+            state.GetEmptySlots()
+                 .OrderBy(s => s.RequiredRank)
+                 .ThenBy(s => s.Start)
+                 .ToList();
 
         /// <summary>
         /// Pokusí se uvolnit kolizní slot s nižší prioritou, aby se uvolnil rozhodčí.
@@ -79,27 +83,26 @@ namespace Diplomka.Solver
         /// </summary>
         private bool TryChainRepair(State state, Slot targetSlot)
         {
-            // Najdi všechny přiřazení, která kolidují s targetSlot
-            // a jejichž rozhodčí má hodnost >= RequiredRank targetSlotu
             var conflictingAssignments = state
                 .Where(p => p.Value != null
                             && p.Value.Rank >= targetSlot.RequiredRank
                             && _conflictChecker.Overlaps(p.Key, targetSlot)
-                            && p.Key.RequiredRank <= targetSlot.RequiredRank) // nižší priorita
-                .OrderBy(p => p.Key.RequiredRank) // nejdříve nejméně náročné
+                            && p.Key.RequiredRank <= targetSlot.RequiredRank)
+                .OrderBy(p => p.Key.RequiredRank)
                 .ToList();
 
             foreach (var conflict in conflictingAssignments)
             {
                 var referee = conflict.Value!;
-                // Zkus přiřadit uvolněného rozhodčího k targetSlotu
-                // Dočasně odeber konfliktní přiřazení
                 state.ClearSlot(conflict.Key);
 
                 if (_conflictChecker.CanAssign(state, targetSlot, referee))
                 {
-                    // Zkontroluj, zda lze obsadit uvolněný slot jiným rozhodčím
-                    var replacements = _conflictChecker.GetEligibleReferees(state, conflict.Key, 
+                    // Hledej náhradu za uvolněný slot — GetEligibleReferees volá CanAssign,
+                    // takže MaxRefereSlots je automaticky respektováno
+                    var replacements = _conflictChecker.GetEligibleReferees(
+                        state,
+                        conflict.Key,
                         _referees.Where(r => !r.Equals(referee)).ToList());
 
                     state.SetReferee(targetSlot, referee);

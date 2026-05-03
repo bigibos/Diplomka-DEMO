@@ -189,7 +189,7 @@ namespace Diplomka.Solver
             var hcInitial = new GreedySolver(available, _conflictChecker, _costCalculator)
                 .Solve(relaxed);
 
-            var hcSolver = new HCSolver(available, _conflictChecker, _costCalculator)
+            var hcSolver = new HCSolver(available, _conflictChecker, _costCalculator, _config)
             {
                 MaxAttempts = HcAttempts,
                 MaxIterations = HcIterations,
@@ -212,6 +212,7 @@ namespace Diplomka.Solver
                 available,
                 _conflictChecker,
                 _costCalculator,
+                _config,
                 timeLimit: BbIterationTimeLimit
             );
 

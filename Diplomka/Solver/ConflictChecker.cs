@@ -9,6 +9,8 @@ namespace Diplomka.Solver
         private readonly DistanceTable _distanceTable;
         private readonly SolverConfiguration _config;
 
+        public SolverConfiguration Config => _config;
+
         public ConflictChecker(DistanceTable distanceTable, SolverConfiguration config)
         {
             _distanceTable = distanceTable;
@@ -60,9 +62,15 @@ namespace Diplomka.Solver
             if (referee.Rank + _config.RankDiffMargin < slot.RequiredRank)
                 return false;
 
+            var assignedSlots = state.GetSlotsByReferee(referee);
+
+            // Rozhoci ma uz maximum prirazenych slotu
+            if (assignedSlots.Count >= _config.MaxRefereSlots)
+                return false;   
+
 
             // Kontrola časových kolizí
-            foreach (var assignedSlot in state.GetSlotsByReferee(referee))
+            foreach (var assignedSlot in assignedSlots)
             {
                 if (Overlaps(slot, assignedSlot))
                     return false;

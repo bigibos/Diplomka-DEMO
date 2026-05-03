@@ -29,6 +29,11 @@ namespace Diplomka.Solver
             return _assignments[slot];
         }
 
+        public Referee? GetReferee(Slot slot)
+        {
+            return _assignments[slot];
+        }
+
         public List<Referee?> GetReferees()
         {
             return _assignments.Values.ToList();

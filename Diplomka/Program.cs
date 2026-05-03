@@ -47,7 +47,7 @@ referees = CsvImporter.LoadReferees($"{rootDirectory}\\referees_nbl.csv");
  */
 ScenerioGenerator gen = new ScenerioGenerator
 {
-    SlotsNumber = 300,
+    MatchCount = 80,
     RefereeNumber = 150,
     DayClustering = 0.4,
     LocationClustering = 0.5,
@@ -163,6 +163,7 @@ var bbSolver = new BBSolver(
     referees,
     conflictChecker,
     costCalculator,
+    config,
     timeLimit: TimeSpan.FromSeconds(10) // omezeni casu behu B&B
 );
 
@@ -174,7 +175,8 @@ var bbSolver = new BBSolver(
 var hcSolver = new HCSolver(
     referees,
     conflictChecker,
-    costCalculator
+    costCalculator,
+    config
 )
 {
     MaxAttempts = 150,

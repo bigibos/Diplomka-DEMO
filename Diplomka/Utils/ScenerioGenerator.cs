@@ -15,8 +15,31 @@ namespace Diplomka.Utils
             public double Weight { get; set; }
         }
 
-        public int SlotsNumber { get; set; } = 100;
+        public class RefereeRole
+        {
+            public string Name { get; set; } = String.Empty;
+            public int MinRank { get; set; }
+            public int MaxRank { get; set; }
+        }
+
+        public string CompetitionName { get; set; } = "NHL z.č.";
+
+        public int MatchCount { get; set; } = 50;
+
         public int RefereeNumber { get; set; } = 20;
+
+        public List<RefereeRole> RefereeRoleSetup { get; set; } = new()
+        {
+            /*
+            new RefereeRole { Name = "První", MinRank = 65, MaxRank = 80 },
+            new RefereeRole { Name = "Druhý", MinRank = 35, MaxRank = 50 },
+            new RefereeRole { Name = "Třetí", MinRank = 10, MaxRank = 25 }
+            */
+            new RefereeRole { Name = "Hlavní 1", MinRank = 75, MaxRank = 85 },
+            new RefereeRole { Name = "Hlavní 2", MinRank = 75, MaxRank = 85 },
+            new RefereeRole { Name = "Čárový 1", MinRank = 20, MaxRank = 40 },
+            new RefereeRole { Name = "Čárový 2", MinRank = 20, MaxRank = 40 },
+        };
 
         /*
          * Shlukovani dnu a lokaci.
@@ -128,15 +151,17 @@ namespace Diplomka.Utils
             var hotLocations = GetHotLocations(random, 5);
 
             var slots = new List<Slot>();
+            int slotIdCounter = 1; // Počítadlo pro unikátní ID slotu
 
-            for (int i = 0; i < SlotsNumber; i++)
+            // Nyní iterujeme přes ZÁPASY místo jednotlivých slotů
+            for (int matchIndex = 0; matchIndex < MatchCount; matchIndex++)
             {
-                // Vyber dne
+                // Výběr dne pro zápas
                 DateTime day = (random.NextDouble() < DayClustering)
                     ? hotDays[random.Next(hotDays.Count)]
                     : dateFrom.Date.AddDays(random.Next((dateTo - dateFrom).Days));
 
-                // Vyber casu s prekryvem
+                // Výběr času s překryvem pro zápas
                 DateTime dateStart;
 
                 if (random.NextDouble() < OverlapProbability && slots.Count > 0)
@@ -149,29 +174,34 @@ namespace Diplomka.Utils
                     dateStart = day.AddMinutes(random.Next(8 * 60, 20 * 60));
                 }
 
-                if (dateStart < dateFrom)
-                    dateStart = dateFrom;
-
-                if (dateStart > dateTo.AddHours(-2))
-                    dateStart = dateTo.AddHours(-2);
+                if (dateStart < dateFrom) dateStart = dateFrom;
+                if (dateStart > dateTo.AddHours(-2)) dateStart = dateTo.AddHours(-2);
 
                 var dateEnd = dateStart + TimeSpan.FromHours(2);
 
-                // Vyber lokace
+                // Výběr lokace pro celý zápas
                 Geo location = (random.NextDouble() < LocationClustering)
                     ? hotLocations[random.Next(hotLocations.Count)]
                     : _locations[random.Next(_locations.Count)];
 
-                var requiredRank = GenerateRank(random, SlotRankDistribution);
+                int matchId = matchIndex + 1;
 
-                slots.Add(new Slot
+                // Generování jednotlivých slotů (rozhodčích) pro tento konkrétní zápas
+                foreach (var roleConfig in RefereeRoleSetup)
                 {
-                    Id = i + 1,
-                    Location = location,
-                    Start = dateStart,
-                    End = dateEnd,
-                    RequiredRank = requiredRank
-                });
+                    // Náhodný rank v rámci povoleného rozmezí pro danou roli
+                    int requiredRank = random.Next(roleConfig.MinRank, roleConfig.MaxRank + 1);
+
+                    slots.Add(new Slot
+                    {
+                        Id = slotIdCounter++,
+                        Name = $"{CompetitionName} {matchId}, {roleConfig.Name}", // Např: "NHL 1, Hlavní 1"
+                        Location = location,
+                        Start = dateStart,
+                        End = dateEnd,
+                        RequiredRank = requiredRank
+                    });
+                }
             }
 
             return slots;

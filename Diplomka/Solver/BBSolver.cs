@@ -9,6 +9,7 @@ namespace Diplomka.Solver
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SolverConfiguration _config;
 
         private State? _bestState;
         private double _bestCost;
@@ -25,6 +26,7 @@ namespace Diplomka.Solver
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
+            SolverConfiguration config,
             TimeSpan? timeLimit = null
             )
         {
@@ -32,6 +34,7 @@ namespace Diplomka.Solver
 
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;
+            _config = config;
 
             _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
@@ -57,10 +60,63 @@ namespace Diplomka.Solver
             return _bestState!;
         }
 
+        public State Solve(IEnumerable<Slot> slots)
+        {
+            _startTime = DateTime.UtcNow;
+            _nodesExplored = 0;
+            _timeLimitExceeded = false;
+
+            var slotList = slots.ToList();
+
+            // Fáze 1: Greedy jako základ
+            Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
+            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
+            /*
+            var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
+            if (emptyAfterGreedy.Count > 0)
+            {
+                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
+                greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
+            }
+            */
+
+            // Fáze 2: HC pro lepší upper bound
+            Console.WriteLine("[B&B] Spouštím HC pro lepší počáteční řešení...");
+            var hcState = new HCSolver(_referees, _conflictChecker, _costCalculator, _config).Solve(slots);
+            var hcCost = _costCalculator.TotalCost(hcState);
+            var greedyCost = _costCalculator.TotalCost(greedyState);
+
+            // Vybereme lepší z greedy a HC jako warm start
+            if (hcCost < greedyCost)
+            {
+                _bestState = hcState;
+                _bestCost = hcCost;
+                Console.WriteLine($"[B&B] HC zlepšilo warm start: {greedyCost:F2} → {hcCost:F2}");
+            }
+            else
+            {
+                _bestState = greedyState;
+                _bestCost = greedyCost;
+            }
+
+            Console.WriteLine($"[B&B] Počáteční cena (warm start): {_bestCost:F2}");
+
+            // Fáze 3: B&B se pokusí zlepšit warm start
+            Console.WriteLine($"[B&B] Spouštím B&B (limit: {_timeLimit.TotalSeconds} s)...");
+            var initialState = new State();
+            foreach (var slot in slotList)
+                initialState.AddSlot(slot);
+
+            Dfs(initialState, 0.0, slotList);
+
+            Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {_nodesExplored}, nejlepší cena: {_bestCost:F2}");
+            return _bestState!;
+        }
+
         /*
          * Hlavni metoda pro spusteni B&B solveru
          */
-        public State Solve(IEnumerable<Slot> slots)
+        public State SolveOLD(IEnumerable<Slot> slots)
         {
             _startTime = DateTime.UtcNow;
             _nodesExplored = 0;
@@ -73,12 +129,14 @@ namespace Diplomka.Solver
             var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
 
             // Pripadna oprava greedy reseni
+            /*
             var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
             if (emptyAfterGreedy.Count > 0)
             {
                 Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
                 greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
             }
+            */
 
             _bestState = greedyState;
             _bestCost = _costCalculator.TotalCost(greedyState);

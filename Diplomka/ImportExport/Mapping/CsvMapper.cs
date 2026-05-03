@@ -16,6 +16,7 @@ namespace Diplomka.ImportExport.Mapping
             return new Slot
             {
                 Id = dto.Id,
+                Name = dto.Name,
                 RequiredRank = dto.RequiredRank,
                 Location = new Geo(dto.Lat, dto.Lon),
                 Start = new DateTime(dto.StartYear, dto.StartMonth, dto.StartDay, dto.StartHour, dto.StartMinute, 0),
@@ -38,6 +39,8 @@ namespace Diplomka.ImportExport.Mapping
         {
             return new SlotCsvDto
             {
+                Id = s.Id,
+                Name = s.Name,
                 RequiredRank = s.RequiredRank,
                 Lat = s.Location.Lat,
                 Lon = s.Location.Lon,
@@ -60,6 +63,7 @@ namespace Diplomka.ImportExport.Mapping
         {
             return new RefereeCsvDto
             {
+                Id = r.Id,
                 Name = r.Name,
                 Rank = r.Rank,
                 Lat = r.Location.Lat,

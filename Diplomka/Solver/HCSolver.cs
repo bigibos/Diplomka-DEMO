@@ -15,6 +15,7 @@ namespace Diplomka.Solver
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
+        private readonly SolverConfiguration _config;
 
         private State? _bestState;
         private double _bestCost;
@@ -27,18 +28,25 @@ namespace Diplomka.Solver
         public HCSolver(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
-            CostCalculator costCalculator
+            CostCalculator costCalculator,
+            SolverConfiguration config
             )
         {
             _referees = referees.ToList();
             _conflictChecker = conflictChecker;
             _costCalculator = costCalculator;
+            _config = config;
         }
 
         // Pocatecni stav - pomoci greedy
         private State InitialState(List<Slot> slots)
         {
-            return new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
+            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
+            var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
+            if (emptyAfterGreedy.Count > 0)
+                greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator, _config).Repair(greedyState);
+            
+            return greedyState;
         }
 
         // Vymena rozhodcich - respektuje kolize
@@ -48,12 +56,15 @@ namespace Diplomka.Solver
 
             // Vybere se nahodny slot pro ktery provadime zmenu
             var slot = slots[_random.Next(slots.Count)];
+            var originalReferee = state.GetReferee(slot);
             state.ClearSlot(slot);
 
             // Vybere se nahodny existujici kandidat pro dany slot
             var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
             if (eligible.Count > 0)
                 state.SetReferee(slot, eligible[_random.Next(eligible.Count)]);
+            else
+                state.SetReferee(slot, originalReferee);
             
         }
 

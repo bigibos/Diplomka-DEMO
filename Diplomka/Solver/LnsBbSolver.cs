@@ -152,6 +152,7 @@ namespace Diplomka.Solver
                     available,
                     _conflictChecker,
                     _costCalculator,
+                    _config,
                     timeLimit: IterationTimeLimit
                 );
 

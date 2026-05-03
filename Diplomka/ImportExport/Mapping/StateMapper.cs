@@ -24,6 +24,7 @@ namespace Diplomka.ImportExport.Mapping
 
                 result.Add(new StateCsvDto
                 {
+                    Slot = slot.Name,
                     Referee = referee.Name,
                     From = slot.Start.ToString("dd.MM.yyyy HH:mm"),
                     To = slot.End.ToString("dd.MM.yyyy HH:mm"),
