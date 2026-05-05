@@ -29,8 +29,13 @@ namespace Diplomka.Solver
 
             for (int pass = 0; pass < _config.MaxRepairPasses; pass++)
             {
+                Console.WriteLine($"[Repair] Oprava {pass}");
                 var emptySlots = GetEmptySlotsOrdered(current);
-                if (emptySlots.Count == 0) break;
+                if (emptySlots.Count == 0)
+                {
+                    Console.WriteLine($"[Repair] Oprava se podařila");
+                    break;
+                }
 
                 foreach (var slot in emptySlots)
                     TryRepairSlot(current, slot);

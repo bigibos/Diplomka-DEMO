@@ -36,6 +36,7 @@ namespace Diplomka.Solver
             // Serazeni slotu podle potrebne urovne
             var orderedSlots = slots
                 .OrderByDescending(s => s.RequiredRank)
+                .ThenBy(s => _conflictChecker.GetEligibleReferees(state, s, _referees).Count)
                 .ThenBy(s => s.Start)
                 .ToList();
 

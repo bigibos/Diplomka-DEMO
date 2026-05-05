@@ -38,25 +38,29 @@ namespace Diplomka.Solver
 
             _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
-        public State Solve(State warmStart)
+        public State Solve(State context, List<Slot>? slotsToOptimize = null)
         {
             _startTime = DateTime.UtcNow;
             _nodesExplored = 0;
             _timeLimitExceeded = false;
 
-            _bestState = (State)warmStart.Clone();
-            _bestCost = _costCalculator.TotalCost(warmStart);
+            var slots = slotsToOptimize ?? context.GetSlots();
+            var relaxedSet = new HashSet<Slot>(slots);
 
-            Console.WriteLine($"[B&B] Warm start cena: {_bestCost:F2}");
+            var initialState = (State)context.Clone();
+            foreach (var slot in slots)
+                initialState.ClearSlot(slot);
 
-            var initialState = new State();
-            var emptySlots = warmStart.GetSlots(); // všechny sloty, žádné přiřazení
-            foreach (var slot in emptySlots)
-                initialState.AddSlot(slot);
+            // fixedCost = pouze cena fixních přiřazení, bez prázdných uvolněných slotů
+            double fixedCost = context.GetSlots()
+                .Where(s => !relaxedSet.Contains(s))
+                .Sum(s => _costCalculator.AssignmentCost(s, context.GetRefereeForSlot(s)));
 
-            Dfs(initialState, 0.0, emptySlots);
+            _bestState = (State)context.Clone();
+            _bestCost = _costCalculator.TotalCost(context); // warm start = celá cena včetně neighbourhood
 
-            Console.WriteLine($"[B&B] Hotovo. Uzlů: {_nodesExplored}, cena: {_bestCost:F2}");
+            Dfs(initialState, fixedCost, slots);
+
             return _bestState!;
         }
 

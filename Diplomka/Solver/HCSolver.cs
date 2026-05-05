@@ -41,10 +41,14 @@ namespace Diplomka.Solver
         // Pocatecni stav - pomoci greedy
         private State InitialState(List<Slot> slots)
         {
+            Console.WriteLine($"[MaxSlots] {_config.MaxRefereSlots}");
             var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
             var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
             if (emptyAfterGreedy.Count > 0)
+            {
+                Console.WriteLine($"[Greedy] Nezaplnil {emptyAfterGreedy.Count} slotů. Oprava...");
                 greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator, _config).Repair(greedyState);
+            }
             
             return greedyState;
         }
@@ -77,7 +81,7 @@ namespace Diplomka.Solver
             {
                 // Restart z nejlepšího stavu + perturbace (Iterated Local Search)
                 var currentState = (State)_bestState!.Clone();
-                for (int p = 0; p < 5; p++) ApplyRandomMove(currentState); // perturbace
+                for (int p = 0; p < 20; p++) ApplyRandomMove(currentState); // perturbace
                 var currentCost = _costCalculator.TotalCost(currentState);
 
                 for (int iteration = 0; iteration < MaxIterations; iteration++)

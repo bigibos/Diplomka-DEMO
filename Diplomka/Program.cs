@@ -147,7 +147,7 @@ var lnsSolver = new LnsBbSolver(
 {
     NeighborhoodSize = 20,     // počet slotů k uvolnění per iteraci
     MaxIterations = 300,    // celkový počet iterací
-    NoImprovementLimit = 30,     // restart po X neúspěších
+    MaxAttempts = 30,     // restart po X neúspěších
     IterationTimeLimit = TimeSpan.FromSeconds(2), // limit mini B&B
     Strategy = LnsBbSolver.NeighborhoodStrategy.CostWeighted
 };

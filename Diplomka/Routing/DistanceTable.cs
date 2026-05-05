@@ -1,6 +1,7 @@
 ﻿using Diplomka.Entity;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -14,44 +15,112 @@ namespace Diplomka.Routing
 
         private static readonly HttpClient _client = new HttpClient();
 
-        // Asynchroni volani OSRM API pro ziskani matice vzdalenosti mezi vsemi lokacemi
+        // Maximalni pocet lokaci v jednom OSRM requestu (verejny server ma limit 100)
+        private const int ChunkSize = 90;
+
+        // Asynchronni volani OSRM API pro ziskani matice vzdalenosti mezi vsemi lokacemi
+        // Lokace jsou rozdeleny do davek, aby se neprekrocil limit OSRM verejneho serveru
         private async Task<Dictionary<(Geo, Geo), RouteInfo>> GetDistanceMatrixAsync(List<Geo> locations)
         {
             var result = new Dictionary<(Geo, Geo), RouteInfo>();
 
-            string coords = string.Join(";", locations.Select(l =>
-                $"{l.Lon.ToString().Replace(',', '.')},{l.Lat.ToString().Replace(',', '.')}"
-            ));
+            // Rozdeleni lokaci do chunků po ChunkSize
+            var chunks = locations
+                .Select((loc, i) => (loc, i))
+                .GroupBy(x => x.i / ChunkSize)
+                .Select(g => g.Select(x => x.loc).ToList())
+                .ToList();
 
-            string url = $"http://router.project-osrm.org/table/v1/driving/{coords}?annotations=distance,duration";
+            int totalCalls = chunks.Count * chunks.Count;
+            int callsDone = 0;
 
-            string response = await _client.GetStringAsync(url);
+            Console.WriteLine($"[DistanceTable] Inicialization: {locations.Count} locations, {totalCalls} OSRM requests");
 
-
-            using JsonDocument doc = JsonDocument.Parse(response);
-
-
-            var distances = doc.RootElement.GetProperty("distances");
-            var durations = doc.RootElement.GetProperty("durations");
-
-            for (int i = 0; i < locations.Count; i++)
+            foreach (var sourceChunk in chunks)
             {
-                for (int j = 0; j < locations.Count; j++)
+                foreach (var destChunk in chunks)
                 {
-                    if (i == j) continue;
+                    // Sestaveni sjednoceneho seznamu lokaci pro tento request
+                    // (Union zachova poradi a odstrani duplicity pres Equals/GetHashCode)
+                    var allLocs = sourceChunk.Union(destChunk).ToList();
 
-                    double distanceMeters = distances[i][j].GetDouble();
-                    double durationSeconds = durations[i][j].GetDouble();
+                    // Indexy sources a destinations v ramci allLocs
+                    var sourceIndices = string.Join(";", sourceChunk.Select(l => allLocs.IndexOf(l)));
+                    var destIndices = string.Join(";", destChunk.Select(l => allLocs.IndexOf(l)));
 
-                    result[(locations[i], locations[j])] = new RouteInfo(
-                        From: locations[i],
-                        To: locations[j],
-                        DistanceKm: distanceMeters / 1000,
-                        Duration: TimeSpan.FromSeconds(durationSeconds)
-                    );
+                    // InvariantCulture — zarucuje tecku jako desetinny oddelovac bez ohledu na nastaveni systemu
+                    string coords = string.Join(";", allLocs.Select(l =>
+                        $"{l.Lon.ToString(CultureInfo.InvariantCulture)},{l.Lat.ToString(CultureInfo.InvariantCulture)}"
+                    ));
+
+                    string url = $"http://router.project-osrm.org/table/v1/driving/{coords}" +
+                                 $"?sources={sourceIndices}&destinations={destIndices}&annotations=distance,duration";
+
+                    string response = await _client.GetStringAsync(url);
+
+                    using JsonDocument doc = JsonDocument.Parse(response);
+
+                    // Kontrola ze OSRM vratil uspesnou odpoved
+                    if (doc.RootElement.TryGetProperty("code", out var codeEl) &&
+                        codeEl.GetString() != "Ok")
+                    {
+                        string msg = doc.RootElement.TryGetProperty("message", out var msgEl)
+                            ? msgEl.GetString() ?? ""
+                            : "Unknown OSRM error";
+                        throw new InvalidOperationException($"[DistanceTable] OSRM error: {msg}");
+                    }
+
+                    var distances = doc.RootElement.GetProperty("distances");
+                    var durations = doc.RootElement.GetProperty("durations");
+
+                    // Odpoved je matice |sourceChunk| x |destChunk|
+                    for (int i = 0; i < sourceChunk.Count; i++)
+                    {
+                        for (int j = 0; j < destChunk.Count; j++)
+                        {
+                            var from = sourceChunk[i];
+                            var to = destChunk[j];
+
+                            if (from.Equals(to)) continue;
+
+                            // OSRM muze vratit null pro nedosazitelne lokace (napr. ostrov bez mostu)
+                            if (distances[i][j].ValueKind == JsonValueKind.Null ||
+                                durations[i][j].ValueKind == JsonValueKind.Null)
+                            {
+                                // Zalozni vzdusna vzdalenost pri 60 km/h
+                                double fallbackKm = from.DistanceTo(to);
+                                double fallbackMin = fallbackKm / 60.0;
+                                result[(from, to)] = new RouteInfo(
+                                    From: from,
+                                    To: to,
+                                    DistanceKm: fallbackKm,
+                                    Duration: TimeSpan.FromMinutes(fallbackMin)
+                                );
+                                continue;
+                            }
+
+                            double distanceMeters = distances[i][j].GetDouble();
+                            double durationSeconds = durations[i][j].GetDouble();
+
+                            result[(from, to)] = new RouteInfo(
+                                From: from,
+                                To: to,
+                                DistanceKm: distanceMeters / 1000.0,
+                                Duration: TimeSpan.FromSeconds(durationSeconds)
+                            );
+                        }
+                    }
+
+                    callsDone++;
+                    Console.WriteLine($"[DistanceTable] {callsDone}/{totalCalls} done");
+
+                    // Prodleva mezi requesty — ochrana pred rate limitingem verejneho serveru
+                    if (callsDone < totalCalls)
+                        await Task.Delay(300);
                 }
             }
 
+            Console.WriteLine($"[DistanceTable] Complete. {result.Count} pairs cached.");
             return result;
         }
 
@@ -59,8 +128,6 @@ namespace Diplomka.Routing
         public async Task Initialize(IEnumerable<Geo> locations)
         {
             var locationList = locations.ToList();
-
-
             _distances = await GetDistanceMatrixAsync(locationList);
         }
 
@@ -68,7 +135,7 @@ namespace Diplomka.Routing
         public RouteInfo? GetRouteInfo(Geo from, Geo to)
         {
             if (from.Equals(to))
-                return new RouteInfo(from, to, 0, TimeSpan.Zero); // Stejna lokace, vzdalenost i cas jsou nula
+                return new RouteInfo(from, to, 0, TimeSpan.Zero);
 
             if (_distances.TryGetValue((from, to), out var info))
                 return info;
@@ -80,7 +147,7 @@ namespace Diplomka.Routing
         public async Task<RouteInfo> GetRouteInfoAsync(Geo from, Geo to)
         {
             if (_distances.TryGetValue((from, to), out var info))
-            {  
+            {
                 return info;
             }
             else
@@ -89,14 +156,12 @@ namespace Diplomka.Routing
                 if (routeInfo == null)
                 {
                     var timeInMinutes = from.DistanceTo(to) / 60;
-                    // Pokud OSRM nenajde cestu, použijeme vzdušnou vzdálenost jako záložní
-                    routeInfo = new RouteInfo(from, to, from.DistanceTo(to), TimeSpan.FromMinutes(timeInMinutes)); // Předpokládejme průměrnou rychlost 60 km/h
+                    routeInfo = new RouteInfo(from, to, from.DistanceTo(to), TimeSpan.FromMinutes(timeInMinutes));
                 }
                 _distances[(from, to)] = routeInfo;
                 return routeInfo;
             }
         }
-
 
         public override string ToString()
         {

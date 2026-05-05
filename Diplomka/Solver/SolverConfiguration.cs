@@ -11,7 +11,7 @@ namespace Diplomka.Solver
         /*
          * Nastaveni restrikci
          */
-        public int MaxRefereSlots { get; set; } = 20;
+        public int MaxRefereSlots { get; set; } = 5;
 
         /*
          * Parametry pro cas potrebny pred zapasem (priprava) a po zapase (uzavreni)
@@ -43,6 +43,6 @@ namespace Diplomka.Solver
          * Konfigurace opravneho algoritmu
          */
 
-        public int MaxRepairPasses { get; set; } = 3;
+        public int MaxRepairPasses { get; set; } = 4;
     }
 }
