@@ -100,7 +100,7 @@ var config = new SolverConfiguration()
 var slotLocations = slots.Select(s => s.Location).Distinct().ToList();
 var refereeLocations = referees.Select(r => r.Location).Distinct().ToList();
 var allLocations = slotLocations.Union(refereeLocations).Distinct().ToList();
-var distanceTable = new DistanceTable();
+var distanceTable = new RouteTable();
 
 Console.WriteLine($"Budování matice vzdáleností přes OSRM - toto může chvíli trvat...");
 await distanceTable.Initialize(allLocations);

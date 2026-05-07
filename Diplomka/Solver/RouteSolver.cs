@@ -10,10 +10,10 @@ namespace Diplomka.Solver
 {
     public class RouteSolver
     {
-        private DistanceTable _distanceTable;
+        private RouteTable _distanceTable;
         private SolverConfiguration _config;
 
-        public RouteSolver(DistanceTable distanceTable, SolverConfiguration config)
+        public RouteSolver(RouteTable distanceTable, SolverConfiguration config)
         {
             _distanceTable = distanceTable;
             _config = config;

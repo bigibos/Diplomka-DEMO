@@ -8,10 +8,10 @@ namespace Diplomka.Solver
     {
        
         private readonly SolverConfiguration _config;
-        private readonly DistanceTable _distanceTable;
+        private readonly RouteTable _distanceTable;
         private readonly RouteSolver _routeSolver;
 
-        public CostCalculator(DistanceTable distanceTable, SolverConfiguration config)
+        public CostCalculator(RouteTable distanceTable, SolverConfiguration config)
         {
             _config = config;   
             _distanceTable = distanceTable;

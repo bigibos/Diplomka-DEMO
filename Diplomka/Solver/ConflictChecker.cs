@@ -6,12 +6,12 @@ namespace Diplomka.Solver
     public class ConflictChecker
     {
 
-        private readonly DistanceTable _distanceTable;
+        private readonly RouteTable _distanceTable;
         private readonly SolverConfiguration _config;
 
         public SolverConfiguration Config => _config;
 
-        public ConflictChecker(DistanceTable distanceTable, SolverConfiguration config)
+        public ConflictChecker(RouteTable distanceTable, SolverConfiguration config)
         {
             _distanceTable = distanceTable;
             _config = config;
