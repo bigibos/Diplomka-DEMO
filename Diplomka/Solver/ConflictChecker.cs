@@ -52,6 +52,13 @@ namespace Diplomka.Solver
             return false;
         }
 
+        // TODO: Dopsat dokumentaci kometar
+        // Kontrola jestli jestli dva sloty patri do stejneho zapasu
+        private static bool SameMatchTime(Slot a, Slot b)
+        {
+            return a.Start == b.Start && a.End == b.End && a.Location.Equals(b.Location);
+        }
+
         /*
          * Kontrola jestli deochazi u avizovaneho prirazeni ke konfliktu v ramci stavu
          * Pokud existuje konflikt vraci false
@@ -66,7 +73,11 @@ namespace Diplomka.Solver
 
             // Rozhoci ma uz maximum prirazenych slotu
             if (assignedSlots.Count >= _config.MaxRefereSlots)
-                return false;   
+                return false;
+
+            // Kontrola zakazanych slotu pro rozhodciho
+            if (referee.BannedSlotIds.Contains(slot.Id))
+                return false;
 
 
             // Kontrola časových kolizí
@@ -74,6 +85,20 @@ namespace Diplomka.Solver
             {
                 if (Overlaps(slot, assignedSlot))
                     return false;
+            }
+
+            // Kontrola rozhodcich kteri nemohou byt spolu (at uz z jakehokoliv duvodu)
+            if (referee.IncompatibleRefereeIds.Count > 0)
+            {
+                foreach (var (assignedSlot, assignedReferee) in state)
+                {
+                    if (assignedReferee == null) continue;
+                    if (!referee.IncompatibleRefereeIds.Contains(assignedReferee.Id)) continue;
+
+                    // Konfliktni rozhodci je prirazen do stejneho zapasu jako je dany slot
+                    if (SameMatchTime(slot, assignedSlot))
+                        return false;
+                }
             }
 
             return true;

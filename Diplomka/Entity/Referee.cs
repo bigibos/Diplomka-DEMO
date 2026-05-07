@@ -26,6 +26,11 @@ namespace Diplomka.Entity
         [Required(ErrorMessage = "Lokace je povinná.")]
         public Geo Location { get; set; } = null!;
 
+        public bool HasCar { get; set; } = true;
+        public List<int> BannedSlotIds { get; set; } = new();
+        public List<int> IncompatibleRefereeIds { get; set; } = new();
+
+
         public override string ToString()
         {
             return $"{Name}, {Rank}, {Location}";
