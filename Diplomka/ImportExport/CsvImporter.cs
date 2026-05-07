@@ -63,5 +63,47 @@ namespace Diplomka.ImportExport
 
             return records.Select(CsvMapper.ToEntity).ToList();
         }
+
+        // TODO: Pridat dokumentacni komentar
+        public static void LoadBans(string bansPath, List<Referee> referees)
+        {
+            if (!File.Exists(bansPath)) return;
+
+            using var reader = new StreamReader(bansPath);
+            using var csv = new CsvReader(reader, csvConfig);
+            csv.Context.RegisterClassMap<BanMap>();
+            csv.Read(); csv.ReadHeader();
+
+            var refById = referees.ToDictionary(r => r.Id);
+
+            foreach (var dto in csv.GetRecords<BanCsvDto>())
+            {
+                if (refById.TryGetValue(dto.RefereeId, out var referee))
+                    referee.BannedSlotIds.Add(dto.SlotId);
+            }
+        }
+
+        // TODO: Pridat dokumentacni komentar
+        public static void LoadIncompatible(string incompatiblePath, List<Referee> referees)
+        {
+            if (!File.Exists(incompatiblePath)) return;
+
+            using var reader = new StreamReader(incompatiblePath);
+            using var csv = new CsvReader(reader, csvConfig);
+            csv.Context.RegisterClassMap<IncompatibleMap>();
+            csv.Read(); csv.ReadHeader();
+
+            var refById = referees.ToDictionary(r => r.Id);
+
+            foreach (var dto in csv.GetRecords<IncompatibleCsvDto>())
+            {
+                // Symetrické napojení - stačí jeden záznam v CSV, obě strany se propojí
+                if (refById.TryGetValue(dto.RefereeIdA, out var refA))
+                    refA.IncompatibleRefereeIds.Add(dto.RefereeIdB);
+
+                if (refById.TryGetValue(dto.RefereeIdB, out var refB))
+                    refB.IncompatibleRefereeIds.Add(dto.RefereeIdA);
+            }
+        }
     }
 }

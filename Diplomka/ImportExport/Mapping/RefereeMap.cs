@@ -20,6 +20,7 @@ namespace Diplomka.ImportExport.Mapping
             Map(m => m.Rank).Name("Rank");
             Map(m => m.Lat).Name("Lat");
             Map(m => m.Lon).Name("Lon");
+            Map(m => m.HasCar).Name("HasCar");
         }
     }
 }

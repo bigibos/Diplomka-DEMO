@@ -44,7 +44,8 @@ namespace Diplomka.ImportExport.Mapping
                 Id = dto.Id,
                 Name = dto.Name,
                 Rank = dto.Rank,
-                Location = new Geo(dto.Lat, dto.Lon)
+                Location = new Geo(dto.Lat, dto.Lon),
+                HasCar = dto.HasCar != 0
             };
         }
 
@@ -90,7 +91,8 @@ namespace Diplomka.ImportExport.Mapping
                 Name = entity.Name,
                 Rank = entity.Rank,
                 Lat = entity.Location.Lat,
-                Lon = entity.Location.Lon
+                Lon = entity.Location.Lon,
+                HasCar = entity.HasCar ? 1 : 0
             };
         }
     }

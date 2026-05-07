@@ -26,5 +26,8 @@ namespace Diplomka.ImportExport.Dto
 
         [Range(-180, 180)]
         public double Lon { get; set; }
+
+        [Range(0, 1)]
+        public int HasCar { get; set; } = 1;
     }
 }
