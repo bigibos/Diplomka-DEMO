@@ -11,7 +11,7 @@ namespace Diplomka.Solver
         /*
          * Nastaveni restrikci
          */
-        public int MaxRefereSlots { get; set; } = 5;
+        public int MaxRefereSlots { get; set; } = 500;
 
         /*
          * Parametry pro cas potrebny pred zapasem (priprava) a po zapase (uzavreni)
