@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace Diplomka.ImportExport.Mapping
 {
+    /// <summary>
+    /// Pravidla mapování rozhodčího mezi entitou a DTO
+    /// </summary>
     public sealed class RefereeMap : ClassMap<RefereeCsvDto>
     {
         public RefereeMap()

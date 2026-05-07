@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 
 namespace Diplomka.ImportExport.Dto
 {
-    public class StateCsvDto
+    /// <summary>
+    /// Data Transfer Object (DTO) pro ukládání stavu do CSV
+    /// </summary>
+    public record StateCsvDto
     {
         public string Slot { get; set; } = String.Empty;
         public string Referee { get; set; } = String.Empty;

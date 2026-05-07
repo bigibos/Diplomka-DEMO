@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Entity
 {
+    /// <summary>
+    /// Datová entita zápasového slotu
+    /// </summary>
     public class Slot
     {
         [Range(0, int.MaxValue)]

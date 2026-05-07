@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace Diplomka.ImportExport.Mapping
 {
+    /// <summary>
+    /// Pravidla mapování slotu mezi entitou a DTO
+    /// </summary>
     public sealed class SlotMap : ClassMap<SlotCsvDto>
     {
         public SlotMap()

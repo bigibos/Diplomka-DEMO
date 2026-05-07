@@ -9,9 +9,17 @@ using System.Threading.Tasks;
 
 namespace Diplomka.ImportExport.Mapping
 {
+    /// <summary>
+    /// Logika pro mapování DTO do entit resp. entit do DTO
+    /// </summary>
     public static class CsvMapper
     {
-        public static Slot ToEntity(SlotCsvDto dto, int id)
+        /// <summary>
+        /// Mapuje DTO slotu na datovou entitu použivanou v business logice
+        /// </summary>
+        /// <param name="dto">DTO slotu mapování</param>
+        /// <returns>Vytvořená datová entita</returns>
+        public static Slot ToEntity(SlotCsvDto dto)
         {
             return new Slot
             {
@@ -24,7 +32,12 @@ namespace Diplomka.ImportExport.Mapping
             };
         }
 
-        public static Referee ToEntity(RefereeCsvDto dto, int id)
+        /// <summary>
+        /// Mapuje DTO rozhodčího na datovou entitu použivanou v business logice
+        /// </summary>
+        /// <param name="dto">DTO rozhodčího pro namapování</param>
+        /// <returns>Namapovaná datová entita</returns>
+        public static Referee ToEntity(RefereeCsvDto dto)
         {
             return new Referee
             {
@@ -35,39 +48,49 @@ namespace Diplomka.ImportExport.Mapping
             };
         }
 
-        public static SlotCsvDto ToDto(Slot s)
+        /// <summary>
+        /// Mapuje datovou entitu slotu na DTO pro uložení do CSV
+        /// </summary>
+        /// <param name="entity">Datová entita slotu pro namapování</param>
+        /// <returns>Namapované DTO</returns>
+        public static SlotCsvDto ToDto(Slot entity)
         {
             return new SlotCsvDto
             {
-                Id = s.Id,
-                Name = s.Name,
-                RequiredRank = s.RequiredRank,
-                Lat = s.Location.Lat,
-                Lon = s.Location.Lon,
+                Id = entity.Id,
+                Name = entity.Name,
+                RequiredRank = entity.RequiredRank,
+                Lat = entity.Location.Lat,
+                Lon = entity.Location.Lon,
 
-                StartDay = s.Start.Day,
-                StartMonth = s.Start.Month,
-                StartYear = s.Start.Year,
-                StartHour = s.Start.Hour,
-                StartMinute = s.Start.Minute,
+                StartDay = entity.Start.Day,
+                StartMonth = entity.Start.Month,
+                StartYear = entity.Start.Year,
+                StartHour = entity.Start.Hour,
+                StartMinute = entity.Start.Minute,
 
-                EndDay = s.End.Day,
-                EndMonth = s.End.Month,
-                EndYear = s.End.Year,
-                EndHour = s.End.Hour,
-                EndMinute = s.End.Minute
+                EndDay = entity.End.Day,
+                EndMonth = entity.End.Month,
+                EndYear = entity.End.Year,
+                EndHour = entity.End.Hour,
+                EndMinute = entity.End.Minute
             };
         }
 
-        public static RefereeCsvDto ToDto(Referee r)
+        /// <summary>
+        /// Mapuje datovou entitu rozhodčího na DTO pro uložení do CSV
+        /// </summary>
+        /// <param name="entity">Datová entita rozhodčího pro namapování</param>
+        /// <returns>Namapované DTO</returns>
+        public static RefereeCsvDto ToDto(Referee entity)
         {
             return new RefereeCsvDto
             {
-                Id = r.Id,
-                Name = r.Name,
-                Rank = r.Rank,
-                Lat = r.Location.Lat,
-                Lon = r.Location.Lon
+                Id = entity.Id,
+                Name = entity.Name,
+                Rank = entity.Rank,
+                Lat = entity.Location.Lat,
+                Lon = entity.Location.Lon
             };
         }
     }

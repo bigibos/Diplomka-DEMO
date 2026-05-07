@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Validators
 {
+    /// <summary>
+    /// Definice anotace pro porovnávání startovních a konečných časů.
+    /// Čas začátků nemůže být za časem konce.
+    /// </summary>
     public class DateRangeAttribute : ValidationAttribute
     {
         private readonly string _startPropertyName;

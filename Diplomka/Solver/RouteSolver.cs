@@ -23,8 +23,11 @@ namespace Diplomka.Solver
          * Vypocet vhodne trasy pro rozhodciho
          * State slouzi jako kontext (jake sloty predchazi aktualnimu a jak se vypocita vzdalenost)
          */
-        public RouteInfo ComputeOptimalRoute(State state, Slot slot, Referee referee)
+        public RouteInfo? ComputeOptimalRoute(State state, Slot slot, Referee? referee)
         {
+            if (referee == null)
+                return null;
+
             // Seřaď existující sloty rozhodčího chronologicky
             var existing = state.GetSlotsByReferee(referee)
                                 .OrderBy(s => s.Start)

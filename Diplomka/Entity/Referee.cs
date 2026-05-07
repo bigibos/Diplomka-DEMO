@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Entity
 {
+    /// <summary>
+    /// Datová entita rozhočího
+    /// </summary>
     public class Referee
     {
         [Range(0, int.MaxValue)]
