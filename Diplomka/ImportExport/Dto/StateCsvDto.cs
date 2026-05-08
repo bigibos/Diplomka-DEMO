@@ -17,14 +17,14 @@ namespace Diplomka.ImportExport.Dto
         public string From { get; set; } = String.Empty;
         public string To { get; set; } = String.Empty;
 
-        public int Rank { get; set; }
-        public int RequiredRank { get; set; }
-        public int RankDiff {  get; set; }
+        public int? Rank { get; set; } = null;
+        public int? RequiredRank { get; set; } = null;
+        public int? RankDiff {  get; set; } = null;
 
-        public double TravelDistance { get; set; }
-        public double TravelTime {  get; set; }
+        public double? TravelDistance { get; set; } = null;
+        public double? TravelTime { get; set; } = null;
         public string TravelFrom { get; set; } = String.Empty;
         public string TravelTo { get; set; } = String.Empty;
-        public bool TravelFromHome { get; set; }
+        public bool? TravelFromHome { get; set; } = null;
     }
 }

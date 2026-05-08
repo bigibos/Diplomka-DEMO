@@ -52,6 +52,14 @@ namespace Diplomka.Solver
             return false;
         }
 
+        // TODO: Dopsat dokumentaci kometar
+        // Kontrola jestli jestli dva sloty patri do stejneho zapasu
+        private bool SameMatchTime(Slot a, Slot b)
+        {
+            return a.Start == b.Start && a.End == b.End && a.Location.Equals(b.Location);
+        }
+
+        // TODO: Dokumentacni kometar
         public bool Overlaps(State state, Slot slot, Referee referee)
         {
             var assignedSlots = state.GetSlotsByReferee(referee);
@@ -63,40 +71,30 @@ namespace Diplomka.Solver
             return false;
         }
 
-        // TODO: Dopsat dokumentaci kometar
-        // Kontrola jestli jestli dva sloty patri do stejneho zapasu
-        private static bool SameMatchTime(Slot a, Slot b)
+        public bool Banned(Slot slot, Referee referee)
         {
-            return a.Start == b.Start && a.End == b.End && a.Location.Equals(b.Location);
+            if (referee.BannedSlotIds.Contains(slot.Id))
+                return true;
+            return false;
         }
 
-        /*
-         * Kontrola jestli deochazi u avizovaneho prirazeni ke konfliktu v ramci stavu
-         * Pokud existuje konflikt vraci false
-         */
-        public bool CanAssign(State state, Slot slot, Referee referee)
+        public bool UnderRanked(Slot slot, Referee referee)
         {
-            // Kontrola hodnosti
             if (referee.Rank + _config.RankDiffMargin < slot.RequiredRank)
-                return false;
+                return true;
+            return false;
+        }
 
+        public bool MaxSlots(State state, Referee referee)
+        {
             var assignedSlots = state.GetSlotsByReferee(referee);
-
-            // Rozhoci ma uz maximum prirazenych slotu
             if (assignedSlots.Count >= _config.MaxRefereSlots)
-                return false;
+                return true;
+            return false;
+        }
 
-            // Kontrola zakazanych slotu pro rozhodciho
-            if (referee.BannedSlotIds.Contains(slot.Id))
-                return false;
-
-
-            // Kontrola časových kolizí
-            if (Overlaps(state, slot, referee))
-                return false;
-
-
-            // Kontrola rozhodcich kteri nemohou byt spolu (at uz z jakehokoliv duvodu)
+        public bool Incompatible(State state, Slot slot, Referee referee)
+        {
             if (referee.IncompatibleRefereeIds.Count > 0)
             {
                 foreach (var (assignedSlot, assignedReferee) in state)
@@ -106,9 +104,39 @@ namespace Diplomka.Solver
 
                     // Konfliktni rozhodci je prirazen do stejneho zapasu jako je dany slot
                     if (SameMatchTime(slot, assignedSlot))
-                        return false;
+                        return true;
                 }
             }
+            return false;
+        }
+
+        /*
+         * Kontrola jestli deochazi u avizovaneho prirazeni ke konfliktu v ramci stavu
+         * Pokud existuje konflikt vraci false
+         */
+        public bool CanAssign(State state, Slot slot, Referee referee)
+        {
+            // Kontrola hodnosti
+            if (UnderRanked(slot, referee))
+                return false;
+
+            // Rozhoci ma uz maximum prirazenych slotu
+            if (MaxSlots(state, referee))
+                return false;
+
+            // Kontrola zakazanych slotu pro rozhodciho
+            if (Banned(slot, referee))
+                return false;
+
+
+            // Kontrola časových kolizí
+            if (Overlaps(state, slot, referee))
+                return false;
+
+
+            // Kontrola rozhodcich kteri nemohou byt spolu (at uz z jakehokoliv duvodu)
+            if (Incompatible(state, slot, referee))
+                return false;    
 
             return true;
         }

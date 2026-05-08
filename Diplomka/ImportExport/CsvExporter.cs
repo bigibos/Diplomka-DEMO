@@ -76,6 +76,19 @@ namespace Diplomka.ImportExport
             csv.WriteRecords(dtos);
         }
 
+        // TODO: Dokumentacni kometar
+        public static void SaveCarGroups(string path, List<CarGroupOptimizer.CarGroup> groups)
+        {
+            var dtos = CarGroupCsvMapper.ToDtoList(groups);
+            dtos = dtos.OrderBy(s => s.From).ToList();
+
+            using var writer = new StreamWriter(path, false, new UTF8Encoding(true));
+
+            using var csv = new CsvWriter(writer, _csvConfig);
+
+            csv.WriteRecords(dtos);
+        }
+
         /// <summary>
         /// Exportuje šablonu CSV pro sloty s hlavičkou a dvěma vzorovými řádky.
         /// Slouží jako návod pro ruční vyplnění vstupních dat.

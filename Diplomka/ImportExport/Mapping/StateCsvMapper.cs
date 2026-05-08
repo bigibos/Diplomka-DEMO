@@ -25,7 +25,7 @@ namespace Diplomka.ImportExport.Mapping
                     Slot = slot.Name,
                     From = slot.Start.ToString("dd.MM.yyyy HH:mm"),
                     To = slot.End.ToString("dd.MM.yyyy HH:mm"),
-                    RequiredRank = slot.RequiredRank,
+                    RequiredRank = slot.RequiredRank
                 };
 
                 var route = routeSolver.ComputeOptimalRoute(state, slot, referee);

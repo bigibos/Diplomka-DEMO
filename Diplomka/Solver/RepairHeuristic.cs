@@ -62,16 +62,35 @@ namespace Diplomka.Solver
             return true;
         }
 
+        // TODO: Dokumentace
+        private static List<Referee> Relax(List<Referee> candidates, Func<Referee, bool> filter)
+        {
+            var filtered = candidates.Where(filter).ToList();
+            return filtered.Count > 0 ? filtered : candidates;
+        }
+
         // Fallback prirazeni ktere relaxuje nektera omezeni - casy ale musi byt dodrzeny!
+        // TODO: Dokumentace
         private bool TryFallbackAssign(State state, Slot slot)
         {
- 
-            var fallback = _referees
+            var candidates = _referees
                 .Where(r => !_conflictChecker.Overlaps(state, slot, r))
+                .ToList();
+
+            if (candidates.Count() == 0) 
+                return false;
+
+            // Každá úroveň relaxace – pokud filtr vrátí neprázdný seznam, použijeme ho
+            candidates = Relax(candidates, r => !_conflictChecker.Banned(slot, r));
+            candidates = Relax(candidates, r => !_conflictChecker.MaxSlots(state, r));
+            candidates = Relax(candidates, r => !_conflictChecker.UnderRanked(slot, r));
+            candidates = Relax(candidates, r => !_conflictChecker.Incompatible(state, slot, r));
+
+            var fallback = candidates
                 .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
                 .FirstOrDefault();
 
-            if (fallback == null) 
+            if (fallback == null)
                 return false;
 
             Console.WriteLine($"[Repair] Fallback {fallback.Name} -> {slot.Name}, {slot.Start}");
