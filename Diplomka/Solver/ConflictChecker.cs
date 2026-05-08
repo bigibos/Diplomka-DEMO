@@ -117,22 +117,20 @@ namespace Diplomka.Solver
         public bool CanAssign(State state, Slot slot, Referee referee)
         {
             // Kontrola hodnosti
-            if (UnderRanked(slot, referee))
-                return false;
-
-            // Rozhoci ma uz maximum prirazenych slotu
-            if (MaxSlots(state, referee))
+            // Kontrola časových kolizí
+            if (Overlaps(state, slot, referee))
                 return false;
 
             // Kontrola zakazanych slotu pro rozhodciho
             if (Banned(slot, referee))
                 return false;
 
-
-            // Kontrola časových kolizí
-            if (Overlaps(state, slot, referee))
+            // Rozhoci ma uz maximum prirazenych slotu
+            if (MaxSlots(state, referee))
                 return false;
 
+            if (UnderRanked(slot, referee))
+                return false;
 
             // Kontrola rozhodcich kteri nemohou byt spolu (at uz z jakehokoliv duvodu)
             if (Incompatible(state, slot, referee))

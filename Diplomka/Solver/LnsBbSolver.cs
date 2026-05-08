@@ -66,7 +66,7 @@ namespace Diplomka.Solver
             Console.WriteLine("[LNS] Spouštím greedy warm start...");
             var initial = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots.ToList());
             initial = new RepairHeuristic(_referees, _conflictChecker, _costCalculator, _config).Repair(initial);
-            return initial;
+            return Solve(initial);
         }
 
         // Jadro algoritmu, pouziva stav pro warm start
