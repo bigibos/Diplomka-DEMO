@@ -64,9 +64,9 @@ namespace Diplomka.Solver
         public State Solve(IEnumerable<Slot> slots)
         {
             Console.WriteLine("[LNS] Spouštím greedy warm start...");
-            var initial = new GreedySolver(_referees, _conflictChecker, _costCalculator)
-                .Solve(slots.ToList());
-            return Solve(initial);
+            var initial = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots.ToList());
+            initial = new RepairHeuristic(_referees, _conflictChecker, _costCalculator, _config).Repair(initial);
+            return initial;
         }
 
         // Jadro algoritmu, pouziva stav pro warm start

@@ -24,12 +24,33 @@ namespace Diplomka.Entity
         public int Rank { get; set; } = 0;
 
         [Required(ErrorMessage = "Lokace je povinná.")]
-        public Geo Location { get; set; } = null!;
+        public Geo? Location { get; set; } = null;
+
+        public double Lat
+        {
+            get => Location?.Lat ?? 0;
+            set
+            {
+                if (Location == null) Location = new Geo(value, 0);
+                else Location.Lat = value;
+            }
+        }
+
+        public double Lon
+        {
+            get => Location?.Lon ?? 0;
+            set
+            {
+                if (Location == null) Location = new Geo(0, value);
+                else Location.Lon = value;
+            }
+        }
 
         public bool HasCar { get; set; } = true;
         public List<int> BannedSlotIds { get; set; } = new();
         public List<int> IncompatibleRefereeIds { get; set; } = new();
 
+        public Referee() { }
 
         public override string ToString()
         {

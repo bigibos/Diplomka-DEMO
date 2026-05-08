@@ -58,20 +58,23 @@ namespace Diplomka.Solver
 
             var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
             state.SetReferee(slot, best);
+            Console.WriteLine($"[Repair] Standard {best.Name} -> {slot.Name}, {slot.Start}");
             return true;
         }
 
+        // Fallback prirazeni ktere relaxuje nektera omezeni - casy ale musi byt dodrzeny!
         private bool TryFallbackAssign(State state, Slot slot)
         {
-            var cfg = _conflictChecker.Config;
+ 
             var fallback = _referees
-                .Where(r => r.Rank + cfg.RankDiffMargin >= slot.RequiredRank &&
-                            state.GetSlotsByReferee(r).Count < cfg.MaxRefereSlots)
+                .Where(r => !_conflictChecker.Overlaps(state, slot, r))
                 .OrderBy(r => _costCalculator.AssignmentCost(slot, r))
                 .FirstOrDefault();
 
-            if (fallback == null) return false;
+            if (fallback == null) 
+                return false;
 
+            Console.WriteLine($"[Repair] Fallback {fallback.Name} -> {slot.Name}, {slot.Start}");
             state.SetReferee(slot, fallback);
             return true;
         }
@@ -118,6 +121,7 @@ namespace Diplomka.Solver
                             .OrderBy(r => _costCalculator.AssignmentCost(conflict.Key, r))
                             .First();
                         state.SetReferee(conflict.Key, replacement);
+                        Console.WriteLine($"[Repair] Chain {replacement.Name} -> {conflict.Key.Name}, {conflict.Key.Start}");
                     }
                     // Uvolněný slot zůstane prázdný – zpracuje se v další iteraci
                     return true;

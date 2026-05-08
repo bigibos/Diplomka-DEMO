@@ -75,5 +75,55 @@ namespace Diplomka.ImportExport
 
             csv.WriteRecords(dtos);
         }
+
+        /// <summary>
+        /// Exportuje šablonu CSV pro sloty s hlavičkou a dvěma vzorovými řádky.
+        /// Slouží jako návod pro ruční vyplnění vstupních dat.
+        /// </summary>
+        /// <param name="path">Cesta k výstupnímu souboru</param>
+        public static void SaveSlotsTemplate(string path)
+        {
+            var lines = new[]
+            {
+                "Id;Name;RequiredRank;StartDay;StartMonth;StartYear;StartHour;StartMinute;EndDay;EndMonth;EndYear;EndHour;EndMinute;Lat;Lon",
+                "1;BK Olomoucko - ERA Basketball Nymburk;70;1;9;2025;17;0;1;9;2025;19;0;49.4719;17.1102",
+                "2;BK Olomoucko - ERA Basketball Nymburk;50;1;9;2025;17;0;1;9;2025;19;0;49.4719;17.1102",
+                "3;BK Olomoucko - ERA Basketball Nymburk;20;1;9;2025;17;0;1;9;2025;19;0;49.4719;17.1102",
+            };
+            File.WriteAllLines(path, lines, new UTF8Encoding(true));
+        }
+
+        /// <summary>
+        /// Exportuje šablonu CSV pro rozhodčí s hlavičkou a vzorovými řádky.
+        /// Slouží jako návod pro ruční vyplnění vstupních dat.
+        /// </summary>
+        /// <param name="path">Cesta k výstupnímu souboru</param>
+        public static void SaveRefereesTemplate(string path)
+        {
+            var lines = new[]
+            {
+                "Id;Name;Rank;Lat;Lon;HasCar",
+                "1;Novák Jan;78;50.0755;14.4378;0",
+                "2;Svoboda Petr;65;49.1951;16.6068;1",
+                "3;Dvořák Tomáš;25;49.8209;18.2625;1",
+            };
+            File.WriteAllLines(path, lines, new UTF8Encoding(true));
+        }
+
+        /// <summary>
+        /// Exportuje šablonu CSV pro zákazy přiřazení (pouze hlavička).
+        /// </summary>
+        public static void SaveBansTemplate(string path)
+        {
+            File.WriteAllLines(path, new[] { "RefereeId;SlotId" }, new UTF8Encoding(true));
+        }
+
+        /// <summary>
+        /// Exportuje šablonu CSV pro nesnášenlivosti (pouze hlavička).
+        /// </summary>
+        public static void SaveIncompatTemplate(string path)
+        {
+            File.WriteAllLines(path, new[] { "RefereeIdA;RefereeIdB" }, new UTF8Encoding(true));
+        }
     }
 }

@@ -52,6 +52,17 @@ namespace Diplomka.Solver
             return false;
         }
 
+        public bool Overlaps(State state, Slot slot, Referee referee)
+        {
+            var assignedSlots = state.GetSlotsByReferee(referee);
+            foreach (var assignedSlot in assignedSlots)
+            {
+                if (Overlaps(slot, assignedSlot))
+                    return true;
+            }
+            return false;
+        }
+
         // TODO: Dopsat dokumentaci kometar
         // Kontrola jestli jestli dva sloty patri do stejneho zapasu
         private static bool SameMatchTime(Slot a, Slot b)
@@ -81,11 +92,9 @@ namespace Diplomka.Solver
 
 
             // Kontrola časových kolizí
-            foreach (var assignedSlot in assignedSlots)
-            {
-                if (Overlaps(slot, assignedSlot))
-                    return false;
-            }
+            if (Overlaps(state, slot, referee))
+                return false;
+
 
             // Kontrola rozhodcich kteri nemohou byt spolu (at uz z jakehokoliv duvodu)
             if (referee.IncompatibleRefereeIds.Count > 0)

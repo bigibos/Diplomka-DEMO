@@ -13,13 +13,13 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Entity
 {
+
     /// <summary>
     /// Datová entita pro uchovávání geolokačních dat.
     /// Využívá se v jiných datových entitách a primárně se s ní pracuje při výpočtech tras
     /// </summary>
     public class Geo
     {
-
         /// <summary>
         /// Zeměpisná šířka
         /// </summary>

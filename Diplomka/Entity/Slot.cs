@@ -25,13 +25,34 @@ namespace Diplomka.Entity
         public int RequiredRank { get; set; } = 0;
         
         [Required(ErrorMessage = "Lokace je povinná.")]
-        public Geo Location { get; set; } = null!;
+        public Geo? Location { get; set; } = null;
+
+        public double Lat
+        {
+            get => Location?.Lat ?? 0;
+            set
+            {
+                if (Location == null) Location = new Geo(value, 0);
+                else Location.Lat = value;
+            }
+        }
+
+        public double Lon
+        {
+            get => Location?.Lon ?? 0;
+            set
+            {
+                if (Location == null) Location = new Geo(0, value);
+                else Location.Lon = value;
+            }
+        }
 
         public DateTime Start { get; set; } = DateTime.MinValue;
 
         [DateRange(nameof(Start))]
         public DateTime End { get; set; } = DateTime.MinValue;
 
+        public Slot() { }
 
         public override string ToString()
         {
@@ -46,7 +67,7 @@ namespace Diplomka.Entity
                     Id == other.Id &&
                     Name == other.Name &&
                     RequiredRank == other.RequiredRank &&
-                    Location.Equals(other.Location) &&
+                    Equals(Location, other.Location) &&
                     Start == other.Start &&
                     End == other.End;
             }
