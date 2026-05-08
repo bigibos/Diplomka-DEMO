@@ -82,9 +82,9 @@ namespace Diplomka.Solver
 
             // Každá úroveň relaxace – pokud filtr vrátí neprázdný seznam, použijeme ho
             candidates = Relax(candidates, r => !_conflictChecker.Banned(slot, r));
-            candidates = Relax(candidates, r => !_conflictChecker.MaxSlots(state, r));
             candidates = Relax(candidates, r => !_conflictChecker.UnderRanked(slot, r));
             candidates = Relax(candidates, r => !_conflictChecker.Incompatible(state, slot, r));
+            candidates = Relax(candidates, r => !_conflictChecker.MaxSlots(state, r));
 
             var fallback = candidates
                 .OrderBy(r => _costCalculator.AssignmentCost(slot, r))

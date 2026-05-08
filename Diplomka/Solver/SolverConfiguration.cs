@@ -42,7 +42,6 @@ namespace Diplomka.Solver
         /*
          * Konfigurace opravneho algoritmu
          */
-
         public int MaxRepairPasses { get; set; } = 4;
     }
 }
