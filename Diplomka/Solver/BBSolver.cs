@@ -79,6 +79,17 @@ namespace Diplomka.Solver
         }
 
         /// <summary>
+        /// Přetížení hlavní metody algoritmu <see cref="Solve(IEnumerable{Slot})"/>
+        /// Principiálně podobné jako <see cref="Solve(State, List{Slot}?)"/> akorát bez přidaného seznamu slotů
+        /// </summary>
+        /// <param name="state">Stov s počátečním řešením</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
+        public State Solve(State state)
+        {
+            return Solve(state, null);
+        }
+
+        /// <summary>
         /// Hlavní metoda algoritmu.
         ///     1) Vytvoří se stav pomocí <see cref="GreedySolver"/>
         ///     2) Vytvoří se stav pomocí <see cref="HCSolver"/>

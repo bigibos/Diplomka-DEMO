@@ -45,7 +45,7 @@ namespace Diplomka.Solver
         /// </summary>
         /// <param name="slots">Seznam slotů pro jejich naplnění</param>
         /// <returns>Hotový počáteční stav</returns>
-        private State InitialState(List<Slot> slots)
+        private State InitialState(IEnumerable<Slot> slots)
         {
             Console.WriteLine($"[MaxSlots] {_config.MaxRefereSlots}");
             var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
