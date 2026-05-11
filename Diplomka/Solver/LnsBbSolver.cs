@@ -129,12 +129,18 @@ namespace Diplomka.Solver
             return best;
         }
 
-        // Repair faze vyuzivajici B&B
-        private State Repair(State current, List<Slot> neighborhood, List<Referee> available)
+        /// <summary>
+        /// Repair fáze vuyžívající <see cref="BBSolver"/>
+        /// </summary>
+        /// <param name="current">Aktuální stav</param>
+        /// <param name="neighborhood">Sousedství vybrané strategií</param>
+        /// <param name="candidates">Dostupní rozhodčí</param>
+        /// <returns>Opravený stav řešení</returns>
+        private State Repair(State current, List<Slot> neighborhood, List<Referee> candidates)
         {
             try
             {
-                var solver = new BBSolver(available, _conflictChecker, _costCalculator,
+                var solver = new BBSolver(candidates, _conflictChecker, _costCalculator,
                                           _config, timeLimit: IterationTimeLimit);
                 return solver.Solve(current, neighborhood);
             }
@@ -145,7 +151,11 @@ namespace Diplomka.Solver
             }
         }
 
-        // Destroy faze s vyberem rezimu
+        /// <summary>
+        /// Destroy fáze pro vybrání, a uvolnění slotu v sousedství podle strategie
+        /// </summary>
+        /// <param name="state">Stav ve kterém se provádí výběr</param>
+        /// <returns>Vybrané sousedství slotů</returns>
         private List<Slot> SelectNeighborhood(State state)
         {
             var slots = state.GetSlots();
@@ -160,13 +170,24 @@ namespace Diplomka.Solver
             };
         }
 
-        // Random strategie pro destroy fazi
+        /// <summary>
+        /// Strategie <see cref="NeighborhoodStrategy.Random"/> pro výběr sousedství
+        /// </summary>
+        /// <param name="slots">Sloty pro výběr</param>
+        /// <param name="groupSize">Velikost sousedství</param>
+        /// <returns>Vybrané sousedství slotů</returns>
         private List<Slot> SelectRandom(List<Slot> slots, int groupSize)
         {
             return slots.OrderBy(s => _random.Next()).Take(groupSize).ToList();
         }
 
-        // CostWeighted strategie pro destroy fazi
+        /// <summary>
+        /// Strategie <see cref="NeighborhoodStrategy.CostWeighted"/> pro výběr sousedství
+        /// </summary>
+        /// <param name="state">Stav pro kontext</param>
+        /// <param name="slots">Sloty pro výběr</param>
+        /// <param name="groupSize">Velikost sousedství</param>
+        /// <returns>Vybrané sousedství slotů</returns>
         private List<Slot> SelectCostWeighted(State state, List<Slot> slots, int groupSize)
         {
             // Kdyby byla vaha 0, tak by dalsi faze nepracoval spravne. Proto se pouziva offset
@@ -206,7 +227,12 @@ namespace Diplomka.Solver
             return group;
         }
 
-        // Clustered strategie pro destroy fazi
+        /// <summary>
+        /// Strategie <see cref="NeighborhoodStrategy.Clustered"/> pro výběr sousedství
+        /// </summary>
+        /// <param name="slots">Sloty pro výběr</param>
+        /// <param name="groupSize">Velikost sousedství</param>
+        /// <returns>Vybrané sousedství slotů</returns>
         private List<Slot> SelectClustered(List<Slot> slots, int groupSize)
         {
             // Vybere se zakladni/kotevni slot
@@ -222,14 +248,19 @@ namespace Diplomka.Solver
         }
 
 
-        // Restrict faze
-        private List<Referee> GetAvailableReferees(State state, List<Slot> relaxed)
+        /// <summary>
+        /// Restrict fáze ve které se získají kandidátní rozhodčí pro vybranné sloty sousedství
+        /// </summary>
+        /// <param name="state">Stav pro kontext</param>
+        /// <param name="group">Sousedství slotů</param>
+        /// <returns>Vhodní kandidáti pro sousedství slotů</returns>
+        private List<Referee> GetAvailableReferees(State state, List<Slot> group)
         {
-            var relaxedSet = new HashSet<Slot>(relaxed);
+            var relaxedSet = new HashSet<Slot>(group);
             var blocked = new HashSet<Referee>();
 
             // Puvodni rozhodci z uvolnenych slotu
-            var relaxedReferees = relaxed
+            var relaxedReferees = group
                 .Select(s => state.GetReferee(s))
                 .Where(r => r != null)
                 .ToHashSet();
@@ -250,7 +281,7 @@ namespace Diplomka.Solver
                 if (blocked.Contains(referee)) 
                     continue; // rozhodci je uz zablokovany pro prirazeni
 
-                foreach (var r in relaxed)
+                foreach (var r in group)
                 {
                     // prirazeni by vytvorilo casovy prekryv
                     if (_conflictChecker.Overlaps(s, r))
@@ -263,38 +294,6 @@ namespace Diplomka.Solver
 
             // rozhodci, kteri nejsou v blokaci pro uvolnene sloty
             return _referees.Where(r => !blocked.Contains(r)).ToList();
-        }
-
-        // Merge faze
-        private State MergeStates(State state, List<Slot> relaxed, State groupState)
-        {
-            var relaxedSet = new HashSet<Slot>(relaxed);
-            var merged = new State();
-
-            // Pridani vsech slotu z puvodniho stavu
-            foreach (var slot in state.GetSlots())
-                merged.AddSlot(slot);
-
-            // Pridani do merged prirazeni mimo opravenou skupinu
-            foreach (var slot in state.GetSlots())
-            {
-                if (relaxedSet.Contains(slot)) 
-                    continue;
-
-                var referee = state.GetReferee(slot);
-                if (referee != null)
-                    merged.SetReferee(slot, referee);
-            }
-
-            // Pridani do merged prirazeni z opravene skupiny 
-            foreach (var slot in relaxed)
-            {
-                var referee = groupState.GetReferee(slot);
-                if (referee != null)
-                    merged.SetReferee(slot, referee);
-            }
-
-            return merged;
         }
     }
 }
