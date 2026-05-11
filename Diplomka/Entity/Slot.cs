@@ -27,26 +27,6 @@ namespace Diplomka.Entity
         [Required(ErrorMessage = "Lokace je povinná.")]
         public Geo? Location { get; set; } = null;
 
-        public double Lat
-        {
-            get => Location?.Lat ?? 0;
-            set
-            {
-                if (Location == null) Location = new Geo(value, 0);
-                else Location.Lat = value;
-            }
-        }
-
-        public double Lon
-        {
-            get => Location?.Lon ?? 0;
-            set
-            {
-                if (Location == null) Location = new Geo(0, value);
-                else Location.Lon = value;
-            }
-        }
-
         public DateTime Start { get; set; } = DateTime.MinValue;
 
         [DateRange(nameof(Start))]
@@ -56,7 +36,7 @@ namespace Diplomka.Entity
 
         public override string ToString()
         {
-            return $"Slot: {RequiredRank}, {Location}, {Start:yyyy-MM-dd HH:mm} - {End:yyyy-MM-dd HH:mm}";
+            return $"Slot: {RequiredRank}, {Location?.ToReadableDecimal()}, {Start:yyyy-MM-dd HH:mm} - {End:yyyy-MM-dd HH:mm}";
         }
 
         public override bool Equals(object? obj)

@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace Diplomka.Solver
 {
+    /// <summary>
+    /// Slouží pro výpočet cen přiřazní a cen celých stavů řešení.
+    /// </summary>
     public class CostCalculator
     {
        
@@ -18,11 +21,13 @@ namespace Diplomka.Solver
             _routeSolver = new RouteSolver(_distanceTable, _config);
         }
 
-        /*
-         * Vypocet ceny prirazeni rozhodciho ke slotu
-         * Vyuziva se primitivni zpusob na vypocet vzdalenosti - vzdy ze zazemi rozhodciho
-         * Nepouziva stav pro kontext - je slepy
-         */
+        /// <summary>
+        /// Prostá varianta pro vápočet ceny přiřazení rozhodčího ke slotu.
+        /// Využívá se základní výpočet vzdálenosti, vždy ze zázemí rozhodčího ke slotu
+        /// </summary>
+        /// <param name="slot">Slot pro výpočet</param>
+        /// <param name="referee">Rozhodčí pro výpočet</param>
+        /// <returns>Jednoduchou cenu přiřazení</returns>
         public double AssignmentCost(Slot slot, Referee? referee)
         {
 
@@ -37,34 +42,33 @@ namespace Diplomka.Solver
             return rankFactor * rankDiff + _config.DistanceFactor * distance;
         }
 
-        /*
-         * Vypocet ceny prirazeni rozhodciho ke slotu
-         * Vyuziva se intuitivnejsi zpusob pro vypocet vzdalenosti s ohledem na sousedni sloty
-         */
+        /// <summary>
+        /// Hlavní vylepšená varianta pro vápočet ceny přiřazení rozhodčího ke slotu.
+        /// Využívá se intuitivní způsob pro vyhodnocení vzdálenosti s ohledem na časová okna a časově sousedící sloty
+        /// </summary>
+        /// <param name="state">Stav pro kontext přiřazení</param>
+        /// <param name="slot">Slot pro výpočet</param>
+        /// <param name="referee">Rozhodčí pro výpočet</param>
+        /// <returns>Cenu přiřezení v kontextu daného stavu</returns>
         public double AssignmentCost(State state, Slot slot, Referee? referee)
         {
             if (referee == null)
                 return _config.UnassignedCost;
 
-            /*
-             * Nastaveni vahy ranku
-             * Muze byt prekvalifikovany, nebo podkavlifikovany
-             */
+            // Nastaveni vahy ranku - prekvalifikovanost, nebo podkvalifikovanost 
             double rankFactor = referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
             double rankDiff = Math.Abs(slot.RequiredRank - referee.Rank);
 
-            /*
-            if (rankDiff > 0)
-                rankDiff *= referee.Rank > slot.RequiredRank ? _config.OverRankFactor : _config.UnderRankFactor;
-            */
             var route = _routeSolver.ComputeOptimalRoute(state,  slot, referee);
 
             return rankFactor * rankDiff + _config.DistanceFactor * route.DistanceKm;
         }
 
-        /*
-         * Vypocet ceny celeho stavu
-         */
+        /// <summary>
+        /// Kontextuální výpočet souhrnu cen přiřazení v celém stavu
+        /// </summary>
+        /// <param name="state">Stav pro výpočet a kontext</param>
+        /// <returns>Souhrn cen přiřezní v celém stavu</returns>
         public double TotalCost(State state)
         {
             double totalCost = 0;
@@ -75,6 +79,7 @@ namespace Diplomka.Solver
             return totalCost;
         }
 
+        // TODO: Pochopit a dpolnit doc. komenty
         // Vypocet dolni meze pro neohodnocene sloty v danem stavu.
         public double LowerBoundForSlots(
             State state,
@@ -107,6 +112,7 @@ namespace Diplomka.Solver
             return lowerBound;
         }
 
+        // TODO: Pochopit a dpolnit doc. komenty
         // Vypocet dolni meze pro neohodnocene sloty bez ohledu na konflikt s ostatnimi sloty
         public double LowerBoundForSlotsSoft(IEnumerable<Slot> slots, IReadOnlyList<Referee> referees)
         {

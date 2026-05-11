@@ -3,11 +3,12 @@ using Diplomka.Solver;
 
 namespace Diplomka.Solver
 {
-    /*
-     * Stochasticky algoritmus - heuristika
-     * Modifikovana verze typickeho HC algoritmu
-     * Reseni v kazdem behu je jine, spoleha se na nahodovost
-     */
+    /// <summary>
+    /// Hlavní optimalizační algoritmus.
+    ///     - Iterované Hill Climbing (horolezecký algoritmus)
+    ///     - Stochastický
+    ///     - Stavy řešení jsou nepředvídatelné (prvek náhody)
+    /// </summary>
     public class HCSolver : ISolver
     {
         private readonly List<Referee> _referees;
@@ -38,7 +39,12 @@ namespace Diplomka.Solver
             _config = config;
         }
 
-        // Pocatecni stav - pomoci greedy
+        /// <summary>
+        /// Vytvoření počátečního startu pro warm start.
+        /// Využívají se algortimy <see cref="GreedySolver"/> a <see cref="RepairHeuristic"/> pro opravu.
+        /// </summary>
+        /// <param name="slots">Seznam slotů pro jejich naplnění</param>
+        /// <returns>Hotový počáteční stav</returns>
         private State InitialState(List<Slot> slots)
         {
             Console.WriteLine($"[MaxSlots] {_config.MaxRefereSlots}");
@@ -53,7 +59,10 @@ namespace Diplomka.Solver
             return greedyState;
         }
 
-        // Vymena rozhodcich - respektuje kolize
+        /// <summary>
+        /// Náhodná výměna/prohození rozhodčích mezi dvěma sloty s repsektováním časového omezení
+        /// </summary>
+        /// <param name="state">Stav ve kterém se má provést prohození</param>
         private void ApplyRandomMove(State state)
         {
             var slots = state.GetSlots();
@@ -72,6 +81,14 @@ namespace Diplomka.Solver
             
         }
 
+        /// <summary>
+        /// Hlavní výpočetní metoda pro algoritmus.
+        ///     1) Provádí se několik zlepšujících pokusů
+        ///     2) V každém pokusu se provede pertrubace a pak se iteruje
+        ///     3) V každé iteraci se provede určitý počet náhodných výměn vedoucích k zlepšení
+        /// </summary>
+        /// <param name="state">Počáteční stav pro warm start</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
         public State Solve(State state)
         {
             _bestState = (State)state.Clone();
@@ -118,6 +135,11 @@ namespace Diplomka.Solver
             return _bestState!;
         }
 
+        /// <summary>
+        /// Přetížení hlavní metody algoritmu <see cref="Solve(State)"/>, která místo stavu pracuje se seznamem slotů, které se mají zaplnit.
+        /// </summary>
+        /// <param name="slots">Seznam slotů k zaplnění.</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
         public State Solve(IEnumerable<Slot> slots)
         {
             var initialState = InitialState(slots.ToList());

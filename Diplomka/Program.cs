@@ -9,21 +9,8 @@ using System.Net.Http.Headers;
 using System.Runtime.ExceptionServices;
 using static Diplomka.Utils.ScenerioGenerator;
 
-/*
- * TODO: Opravit
- * 
- * Pro vstupni data slots_comb.csv a referees_comb.csv
- * Pro dleis casy na pripravu a uklid
- * Vraci unfeasable reseni (sloty zustavaji neobsazeny) bez ohledu na naroky na cenu
- * Zaroven je s takovym objemem dat B&B pomerne pomaly - mala sance nalezeni lepsiho reseni
- * 
- * Pokud je to mozne (coz by u techto dat a parametru snad melo) musi byt vraceno minimalne feasable reseni - bez cas. kolizi
- * Mozne nedostatky greedy alg. nebo opravneho alg.
- * Bylo by mozna dobre analyticky orezat vstupni mnozinu rozhodcich, aby byla co nejmensi ale zaroven pouzitelna (MOZNA)
- * 
- */
 
-
+// TODO: Projekt - pridat poradny logger a exception handler a validation handler ???
 
 string rootDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
@@ -115,22 +102,6 @@ var routeSolver = new RouteSolver(distanceTable, config);
 var conflictChecker = new ConflictChecker(distanceTable, config);
 var costCalculator = new CostCalculator(distanceTable, config);
 
-/*
- * ---------------------------------------
- * Inicializace Hybrid
- * ---------------------------------------
- */
-var hybridSolver = new LnsHybridSolver(
-    referees, conflictChecker, costCalculator, config)
-{
-    NeighborhoodSize = 20,
-    MaxIterations = 300,
-    SwitchAfterNoImprovement = 20,
-    BbIterationTimeLimit = TimeSpan.FromSeconds(2),
-    HcAttempts = 5,
-    HcIterations = 200,
-    HcMoves = 30
-};
 
 /*
  * ---------------------------------------
@@ -187,18 +158,6 @@ Stopwatch sw = new Stopwatch();
 
 Console.WriteLine("==============================================================");
 Console.WriteLine();
-Console.WriteLine("                  Spoustim Hybrid (LNS + BB + HC)...");
-Console.WriteLine();
-Console.WriteLine("==============================================================");
-
-sw.Restart();
-State resultHybrid = hybridSolver.Solve(slots);
-sw.Stop();
-var hybridTime = sw.ElapsedMilliseconds;
-CsvExporter.SaveState($"{rootDirectory}\\resultHYB.csv", resultHybrid, routeSolver);
-
-Console.WriteLine("==============================================================");
-Console.WriteLine();
 Console.WriteLine("                  Spoustim Branch & Bound (LNS)...");
 Console.WriteLine();
 Console.WriteLine("==============================================================");
@@ -240,16 +199,6 @@ Console.WriteLine();
 Console.WriteLine("                  VÝSLEDKY ALGORITMŮ");
 Console.WriteLine();
 Console.WriteLine("==============================================================");
-
-Console.WriteLine();
-Console.WriteLine("Hybrid (LNS + BB + HC)");
-Console.WriteLine("+----------------------+------------------------------+");
-Console.WriteLine($"| Celková cena         | {costCalculator.TotalCost(resultHybrid),-28:F2} |");
-Console.WriteLine($"| Prázdné sloty        | {resultHybrid.GetEmptySlots().Count(),-28} |");
-Console.WriteLine($"| Zlepšující iterace BB| {($"{hybridSolver.BbImprovements}/{hybridSolver.TotalIterations}"),-28} |");
-Console.WriteLine($"| Zlepšující iterace HC| {($"{hybridSolver.HcImprovements}/{hybridSolver.TotalIterations}"),-28} |");
-Console.WriteLine($"| Čas                  | {($"{hybridTime} ms"),-28} |");
-Console.WriteLine("+----------------------+------------------------------+");
 
 Console.WriteLine();
 Console.WriteLine("Branc & Bound (LNS)");

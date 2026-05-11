@@ -9,47 +9,70 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Solver
 {
-    /*
-     * Hlavni stav prirazeni rozhodcich do slotu
-     */
+    // TODO: Sjednoti kolekce, nekde je IEnumerable a nekde List
+    /// <summary>
+    /// Stav řešení uchovávájící přiřezení rozhodčích ke slotům.
+    /// Jsou zde uchovávány i dalčí pomocné struktury pro rychlejší přístupy.
+    /// </summary>
     public class State : IEnumerable<KeyValuePair<Slot, Referee?>>, ICloneable
     {
-        // Hlavni struktura pro prirazeni
+        /// <summary>
+        /// Hlavní slovníková struktura pro přiřazení
+        /// </summary>
         private Dictionary<Slot, Referee?> _assignments = new();
 
-        // Pomocna struktura pro uchovavani slotu, ktere ma rozhodci
+        /// <summary>
+        /// Pomocná struktura pro uchovávání slotů, která jsou zaplněny daným rozhodčím
+        /// </summary>
         private Dictionary<Referee, List<Slot>> _refereeToSlots = new();
 
-        // Pomocna struktura pro uchovavani prazdnych slotu
+        /// <summary>
+        /// Pomocná struktura pro uchovávání prázdných slotů
+        /// </summary>
         private HashSet<Slot> _emptySlots = new();
 
-
-        public Referee GetRefereeForSlot(Slot slot)
-        {
-            return _assignments[slot];
-        }
-
+        /// <summary>
+        /// Získá rozhodčího přiřazeného ke slotu
+        /// </summary>
+        /// <param name="slot">Slot jako klíč k hledání</param>
+        /// <returns>Rozhodčí, když je nějaký ke slotu přiřazen, jinak null</returns>
         public Referee? GetReferee(Slot slot)
         {
             return _assignments[slot];
         }
 
+        /// <summary>
+        /// Získání seznamu všech přiřazených rozhodčích ze stavu
+        /// </summary>
+        /// <returns>Seznam rozhodčích</returns>
         public List<Referee?> GetReferees()
         {
             return _assignments.Values.ToList();
         }
 
+        /// <summary>
+        /// Získání všech slotů ze stavu (včetně nezaplněných)
+        /// </summary>
+        /// <returns>Seznam slotů</returns>
         public List<Slot> GetSlots()
         {
             return _assignments.Keys.ToList();
         }
 
-
+        /// <summary>
+        /// Získání nezaplněných slotů
+        /// </summary>
+        /// <returns>Seznam slotů</returns>
         public IEnumerable<Slot> GetEmptySlots()
         {
             return _emptySlots;
         }
 
+        /// <summary>
+        /// Získání slotů, které jsou zaplněny daným rozhodčím
+        /// </summary>
+        /// <param name="referee">Rozhodčí k prohledávání</param>
+        /// <returns>Seznam slotů</returns>
         public List<Slot> GetSlotsByReferee(Referee referee)
         {
             if (_refereeToSlots.TryGetValue(referee, out var slots))
@@ -59,12 +82,20 @@ namespace Diplomka.Solver
             return new List<Slot>();
         }
 
+        /// <summary>
+        /// Přidání nezaplněného slotu do stavu
+        /// </summary>
+        /// <param name="slot">Slot k přidání</param>
         public void AddSlot(Slot slot)
         {
             _assignments[slot] = null;
             _emptySlots.Add(slot);
         }
 
+        /// <summary>
+        /// Odebrání a vyprázndění slotu ze stavu
+        /// </summary>
+        /// <param name="slot">Slot k odebrání</param>
         public void RemoveSlot(Slot slot)
         {
             if (_assignments.TryGetValue(slot, out var existingReferee))
@@ -78,6 +109,10 @@ namespace Diplomka.Solver
             }
         }
 
+        /// <summary>
+        /// Vyprázdnění slotu ve stavu (odebrání přiřazeného rozhodčího)
+        /// </summary>
+        /// <param name="slot">Slot k vyprázdnění</param>
         public void ClearSlot(Slot slot)
         {
             if (_assignments.TryGetValue(slot, out var existingReferee) && existingReferee != null)
@@ -88,6 +123,11 @@ namespace Diplomka.Solver
             }
         }
 
+        /// <summary>
+        /// Přiřazení rozhodčího ke slotu
+        /// </summary>
+        /// <param name="slot">Slot k zaplnění</param>
+        /// <param name="referee">Rozhodčí k přiřazení</param>
         public void SetReferee(Slot slot, Referee? referee)
         {
             if (!_assignments.TryGetValue(slot, out var oldReferee))
@@ -112,6 +152,11 @@ namespace Diplomka.Solver
             }
         }
 
+        /// <summary>
+        /// Pomocná metoda pro odebrání slotu z pomocné datové struktury uchovávající sloty zaplněné rozhodčím
+        /// </summary>
+        /// <param name="referee">Rozhodčí k prohledávání</param>
+        /// <param name="slot">Slot k odebrání</param>
         private void RemoveFromIndex(Referee referee, Slot slot)
         {
             if (_refereeToSlots.TryGetValue(referee, out var list))
@@ -120,16 +165,19 @@ namespace Diplomka.Solver
             }
         }
 
+        // Vytvoření enumerátoru pro lepší procházení stavu vně třídy
         public IEnumerator<KeyValuePair<Slot, Referee?>> GetEnumerator()
         {
             return _assignments.GetEnumerator();
         }
 
+        // Získání vytvořeného emurátoru
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
         }
 
+        // TODO: Zastarale, upravit
         public override string ToString()
         {
             var sb = new StringBuilder();

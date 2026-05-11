@@ -3,21 +3,11 @@ using Diplomka.Solver;
 
 namespace Diplomka.Solver
 {
-    /*
-     * Large Neighborhood Search (LNS)
-     * Komplexnejsi nez klasicky Hill Climbing (Iterated Local Search - ILS)
-     * Umoznuje unikat z lokalniho optima pomoci reseni skupin stavoveho prostoru, misto prostoru celeho
-     * 
-     * V kazde iteraci jsou tyto faze:
-     *  - Destroy - vybere se urcity pocet slotu, ktere se uvolni pro nova prirazeni pomoci strategie:
-     *      - Random - vyber slotu je nahodny
-     *      - CostWeighted - preferuji se sloty s drazsim prirazenim (nejvetsi potencialni zlepseni)
-     *      - Clustered - vyber jednoho kotevniho slotu a pak jeho casove sousedicich slotu
-     *  - Restric - vyberou se vhodni kandidati pro prirazeni do skupiny slotu
-     *  - Repair - pomoci B&B se provedou prirazeni na vybrane skupine slotu s vybranymi rozhodcimi
-     *  - Merge - skupina prirazenych slotu se slouci se zbytkem stavu
-     *  - Accept - pri zlepseni se akceptuje nove reseni, jinak se zkousi az do vycerpani limitu (pri prekroci se vybere nejlepsi znamy stav)
-     */
+    /// <summary>
+    /// Hlavní optimalizační algoritmus.
+    ///     - Large Neighborhood Search (LNS) s opravným Branch & Bound
+    ///     - Řešení strategicky zvolených skupin stavového prostoru
+    /// </summary>
     public class LnsBbSolver : ISolver
     {
         private readonly List<Referee> _referees;
@@ -37,6 +27,12 @@ namespace Diplomka.Solver
 
         public NeighborhoodStrategy Strategy { get; set; } = NeighborhoodStrategy.CostWeighted;
 
+        /// <summary>
+        /// Strategie pro výběr skupin/sousedství
+        ///     1) <see cref="Random"/> - výběr skupiny slotů je náhodný
+        ///     2) <see cref="CostWeighted"/> - výběr skupiny slotů s nejdražší cenou přiřazení (největší potenciál zlepšení)
+        ///     3) <see cref="Clustered"/> - výběr kotevního slotu a pak jeho časově sousedních slotů
+        /// </summary>
         public enum NeighborhoodStrategy
         {
             Random,
@@ -60,7 +56,11 @@ namespace Diplomka.Solver
             _config = config;
         }
 
-        // Vytvoreni pocatecniho reseni pro warm start
+        /// <summary>
+        /// Přetížení hlavní metody algoritmu <see cref="Solve(State)"/> s vlastní tvorbou počátečního stavu pomocí <see cref="GreedySolver"/> a <see cref="RepairHeuristic"/>
+        /// </summary>
+        /// <param name="slots">Seznam slotů k zaplnění</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
         public State Solve(IEnumerable<Slot> slots)
         {
             Console.WriteLine("[LNS] Spouštím greedy warm start...");
@@ -69,13 +69,24 @@ namespace Diplomka.Solver
             return Solve(initial);
         }
 
-        // Jadro algoritmu, pouziva stav pro warm start
-        public State Solve(State initialState)
+
+        /// <summary>
+        /// Hlavní metoda algoritmu.
+        /// Použije počáteční řešení a pokusí se ho vylepšít fázemi:
+        ///     1) Destroy - vybere se určitý počet slotů, kterée se uvolní pro nová přiřazení pomocí zvolené strategie
+        ///     2) Restric - vyberou se vhodní kandidáti pro přiřazení do uvolněné skupiny slotů
+        ///     3) Repair - pomocí <see cref="BBSolver"/> se provedou přiřazení na vybrané skupně slotů s vybranými kandidátmi
+        ///     4) Merge - skupina zaplněných slotů se sloučí se zbytkem stavu
+        ///     5) Accept - při zlepšení se akceptuje nové řešení, jinak se zkouší znovu až do překročení limitu
+        /// </summary>
+        /// <param name="state">Počateční stav k vylepšení</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
+        public State Solve(State state)
         {
             TotalIterations = 0;
             ImprovingIterations = 0;
 
-            var best = (State)initialState.Clone();
+            var best = (State)state.Clone();
             var current = best;
             BestCost = _costCalculator.TotalCost(best);
             int noImprovementCount = 0;
@@ -163,7 +174,7 @@ namespace Diplomka.Solver
 
             // Vyber prirazene sloty a jajich cenu
             var candidatesWithCost = slots.Select(s => {
-                var referee = state.GetRefereeForSlot(s);
+                var referee = state.GetReferee(s);
                 double cost = referee != null
                     ? _costCalculator.AssignmentCost(s, referee)
                     : _config.UnassignedCost;
@@ -219,7 +230,7 @@ namespace Diplomka.Solver
 
             // Puvodni rozhodci z uvolnenych slotu
             var relaxedReferees = relaxed
-                .Select(s => state.GetRefereeForSlot(s))
+                .Select(s => state.GetReferee(s))
                 .Where(r => r != null)
                 .ToHashSet();
 
@@ -229,7 +240,7 @@ namespace Diplomka.Solver
                 if (relaxedSet.Contains(s)) 
                     continue; // preskoceni uvolnenych slotu
 
-                var referee = state.GetRefereeForSlot(s);
+                var referee = state.GetReferee(s);
                 if (referee == null) 
                     continue; // prazdny slot nikoho neblokuje
 
@@ -270,7 +281,7 @@ namespace Diplomka.Solver
                 if (relaxedSet.Contains(slot)) 
                     continue;
 
-                var referee = state.GetRefereeForSlot(slot);
+                var referee = state.GetReferee(slot);
                 if (referee != null)
                     merged.SetReferee(slot, referee);
             }
@@ -278,7 +289,7 @@ namespace Diplomka.Solver
             // Pridani do merged prirazeni z opravene skupiny 
             foreach (var slot in relaxed)
             {
-                var referee = groupState.GetRefereeForSlot(slot);
+                var referee = groupState.GetReferee(slot);
                 if (referee != null)
                     merged.SetReferee(slot, referee);
             }

@@ -2,6 +2,12 @@ using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
+    /// <summary>
+    /// Hlavní optimalizační algoritmus.
+    ///     - Branch & Bound s warm startem pro horní mez
+    ///     - Deterministický (exaktní)
+    ///     - V základu pro stejné vstupy vždy najde stejné řešení, ALE s použítím <see cref="HCSolver"/> pro warm start to neplatí
+    /// </summary>
     public class BBSolver : ISolver
     {
         private readonly List<Referee> _referees;
@@ -38,6 +44,14 @@ namespace Diplomka.Solver
 
             _timeLimit = timeLimit ?? TimeSpan.FromSeconds(30);
         }
+
+        /// <summary>
+        /// Přetížení hlavní metody algoritmu <see cref="Solve(IEnumerable{Slot})"/>
+        /// Částečné řešení vybrané části stavu. Využívá se především v <see cref="LnsBbSolver"/>
+        /// </summary>
+        /// <param name="context">Stav pro kontext přiřazení</param>
+        /// <param name="slotsToOptimize">Sloty ze kontextu, které se mají optimalizovat</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
         public State Solve(State context, List<Slot>? slotsToOptimize = null)
         {
             _startTime = DateTime.UtcNow;
@@ -54,7 +68,7 @@ namespace Diplomka.Solver
             // fixedCost = pouze cena fixních přiřazení, bez prázdných uvolněných slotů
             double fixedCost = context.GetSlots()
                 .Where(s => !relaxedSet.Contains(s))
-                .Sum(s => _costCalculator.AssignmentCost(s, context.GetRefereeForSlot(s)));
+                .Sum(s => _costCalculator.AssignmentCost(s, context.GetReferee(s)));
 
             _bestState = (State)context.Clone();
             _bestCost = _costCalculator.TotalCost(context); // warm start = celá cena včetně neighbourhood
@@ -64,6 +78,15 @@ namespace Diplomka.Solver
             return _bestState!;
         }
 
+        /// <summary>
+        /// Hlavní metoda algoritmu.
+        ///     1) Vytvoří se stav pomocí <see cref="GreedySolver"/>
+        ///     2) Vytvoří se stav pomocí <see cref="HCSolver"/>
+        ///     3) Vybere se lepší počáteční stav pro warm start a horní mez
+        ///     4) Branch & Bound se rekurzivním voláním <see cref="Dfs(State, double, List{Slot})"/> pokusí počáteční stav zlepšit
+        /// </summary>
+        /// <param name="slots">Sloty k zaplnění</param>
+        /// <returns>Stav nejlepšího nalezené řešení</returns>
         public State Solve(IEnumerable<Slot> slots)
         {
             _startTime = DateTime.UtcNow;
@@ -75,14 +98,6 @@ namespace Diplomka.Solver
             // Fáze 1: Greedy jako základ
             Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
             var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
-            /*
-            var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
-            if (emptyAfterGreedy.Count > 0)
-            {
-                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
-                greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
-            }
-            */
 
             // Fáze 2: HC pro lepší upper bound
             Console.WriteLine("[B&B] Spouštím HC pro lepší počáteční řešení...");
@@ -117,55 +132,20 @@ namespace Diplomka.Solver
             return _bestState!;
         }
 
-        /*
-         * Hlavni metoda pro spusteni B&B solveru
-         */
-        public State SolveOLD(IEnumerable<Slot> slots)
-        {
-            _startTime = DateTime.UtcNow;
-            _nodesExplored = 0;
-            _timeLimitExceeded = false;
 
-            var slotList = slots.ToList();
-
-            // Jednoduche (greedy) pocatecni reseni pro upper bound
-            Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
-            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
-
-            // Pripadna oprava greedy reseni
-            /*
-            var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
-            if (emptyAfterGreedy.Count > 0)
-            {
-                Console.WriteLine($"[B&B] Greedy nezaplnil {emptyAfterGreedy.Count} slotů – spouštím repair...");
-                greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator).Repair(greedyState);
-            }
-            */
-
-            _bestState = greedyState;
-            _bestCost = _costCalculator.TotalCost(greedyState);
-            Console.WriteLine($"[B&B] Počáteční cena (greedy): {_bestCost:F2}");
-
-            // Spousteni B&B pro zlepseni reseni z greedy faze
-            Console.WriteLine($"[B&B] Spouštím B&B (limit: {_timeLimit.TotalSeconds} s)...");
-
-            // Prázdný výchozí stav pro B&B (přidáme sloty bez přiřazení)
-            var initialState = new State();
-            foreach (var slot in slotList)
-                initialState.AddSlot(slot);
-
-            Dfs(initialState, 0.0, slotList);
-
-            Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {_nodesExplored}, nejlepší cena: {_bestCost:F2}");
-            return _bestState!;
-        }
-
-        /*
-         * Hlavni jadro B&B
-         * - Rekurzivni Depth-First Search prohledava stavovy prostor
-         * - V kazdem kroku se vybere slot s nejmensim poctem zpusobilych rozhodcich (MRV - Minimum Remaining Values)
-         * - Kandidati pro tento slot jsou serazeni podle ceny (best-first), aby se rychleji dosahovalo lepsich reseni
-         */
+        /// <summary>
+        /// Jádro Branch & Bound.
+        /// Jedná se o rekurzivní Depth-First Search algoritmus, pro prohledávání větví stavového prostoru
+        ///     1) Kontrola jestli jsou všechny sloty zaplněny - pokud ano tak návrat z rekurze
+        ///     2) Výběr MRV slotu pomocí <see cref="SelectSlotMRV(State, List{Slot})"/>
+        ///     3) Odřezávání (pruning) pokud neexistují žádní vhodní kandidátí pro MRV slot
+        ///     4) Seřazení kandidátů podle ceny přiřazení (best-first)
+        ///     5) Odhad a kontrola spodní meze - pokud je spodní mez vyšší než nejlepší dosavadní cena tak odřezává větev (pruning)
+        ///     6) Přiřazení rozhodčího ke slotu a další rekurzivní volání
+        /// </summary>
+        /// <param name="state">Stav pro postupné přiřazování v rámci rekurzí</param>
+        /// <param name="costSoFar">Doposavaď nalezená cena stavu</param>
+        /// <param name="emptySlots">Doposud prázdné sloty</param>
         private void Dfs(State state, double costSoFar, List<Slot> emptySlots)
         {
             _nodesExplored++;
@@ -232,24 +212,28 @@ namespace Diplomka.Solver
             }
         }
 
-        /*
-         * MRV - Minimum Remaining Values
-         * - Vyber slotu s nejmensim poctem zpusobilych rozhodcich
-         */
+
+        /// <summary>
+        /// MRV - Minimum Remaining Values
+        /// Jedná se o výběr slotu s nejmenším počtem způsobilých kandidátu
+        /// </summary>
+        /// <param name="state"></param>
+        /// <param name="emptySlots"></param>
+        /// <returns>Trojice hodnot s MRV slotem, jeho kadidáty a odhadem spodní meze</returns>
         private (Slot slot, List<Referee> candidates, double lowerBound) SelectSlotMRV(
             State state, List<Slot> emptySlots)
         {
             Slot? best = null;
             List<Referee> bestCandidates = new();
             int bestCount = int.MaxValue;
-            double lbSum = 0.0;  // <-- přidáme součet minim
+            double lbSum = 0.0;
 
             foreach (var slot in emptySlots)
             {
                 var candidates = _conflictChecker.GetEligibleReferees(state, slot, _referees);
 
                 if (candidates.Count == 0)
-                    return (slot, candidates, double.MaxValue); // mrtvá větev
+                    return (slot, candidates, double.MaxValue); // mrtva vetev
 
                 // Minimum pro tento slot = nejlevnější dostupné přiřazení
                 double minCost = candidates

@@ -3,9 +3,13 @@ using Diplomka.Entity;
 namespace Diplomka.Solver
 {
 
-    /*
-     * Seradi sloty podle potrebne urovne a snazi se nejmin priradit sloty pro ktere je nejmin kandidatu
-     */
+    /// <summary>
+    /// Hladový algoritmus pro pøímoèaré pøiøazení rozhodèích ke slotùm.
+    /// 
+    /// Jeho strategii je vybrat vždy to nejlepší možné pøiøazení pro postupné pøiøazování.
+    /// Díky tomu je možné sestavovat rychlá poèáteèní øešení, která však pro složitìjší problémi mùžou zanechávat
+    /// nektìré sloty prázdné z dùvodu "vyžrání" vhodných rozhodèích pøedèasnì (proto hladový)
+    /// </summary>
     public class GreedySolver : ISolver
     {
         private readonly List<Referee> _referees;
@@ -24,11 +28,25 @@ namespace Diplomka.Solver
             _costCalculator = costCalculator;   
         }
 
+        /// <summary>
+        /// Pøetížení hlavní metody algoritmu <see cref="GreedySolver.Solve(IEnumerable{Slot})"/>.
+        /// Místo seznamu rozhodèích využívá stav.
+        /// </summary>
+        /// <param name="state">Stav pro vybrání seznamu slotù pro jejich zaplnìní</param>
+        /// <returns>Nový sestavný stav øešení</returns>
         public State Solve(State state)
         {
             return Solve(state.GetSlots());
         }
 
+        /// <summary>
+        /// Hlavní metoda pro bìh algoritmu.
+        ///     1) Seøadí sloty podle úrovní a èasù
+        ///     2) Pro každý slot najde vhodného kandidáty
+        ///     3) Do slotu pøiøadí kandidáta s nejnižší cenou pøiøazení
+        /// </summary>
+        /// <param name="slots">Seznam slotù pro jejich zaplnìní</param>
+        /// <returns>Nový sestavený stav øešení</returns>
         public State Solve(IEnumerable<Slot> slots)
         {
             var state = new State();

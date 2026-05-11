@@ -2,8 +2,14 @@
 
 namespace Diplomka.Solver
 {
+    /// <summary>
+    /// Třída sloužící k optimalizování a návrhu lepšího cestování pomocí společné cesty rozhodčích.
+    /// </summary>
     public class CarGroupOptimizer
     {
+        /// <summary>
+        /// Pomocný třída pro vytvoření cestovních skupin - jeden řidič a seznam pasažérů
+        /// </summary>
         public record CarGroup
         {
             public Slot Slot { get; init; } = null!;
@@ -11,6 +17,12 @@ namespace Diplomka.Solver
             public List<Referee> Passengers { get; init; } = new();
         }
 
+        /// <summary>
+        /// Hlavní metoda algoritmu, pro vytvoření cestovních skupin.
+        /// </summary>
+        /// <param name="state">Stave pro kontext</param>
+        /// <param name="unpaired">Seznam nespárovaných rozhodčích</param>
+        /// <returns>Seznam cestovních skupin</returns>
         public List<CarGroup> Optimize(State state, out List<Referee> unpaired)
         {
             var groups = new List<CarGroup>();
@@ -80,13 +92,16 @@ namespace Diplomka.Solver
         }
 
         /// <summary>
-        /// Odkud rozhodčí na tento slot přijíždí –
-        /// z předchozího slotu pokud existuje, jinak z domova.
+        /// Odkud rozhodčí na tento slot přijíždí – z předchozího slotu pokud existuje, jinak z domova.
         /// </summary>
-        private static Geo? GetOrigin(Referee referee, Slot currentSlot, State state)
+        /// <param name="referee">Rozhodčí pro vyhodnocení</param>
+        /// <param name="slot">Slot pro vyhodnocení</param>
+        /// <param name="state">Stav pro kontext</param>
+        /// <returns>Lokace odkud rozhodčí přijíždí</returns>
+        private static Geo? GetOrigin(Referee referee, Slot slot, State state)
         {
             var previous = state.GetSlotsByReferee(referee)
-                .Where(s => s.End <= currentSlot.Start)
+                .Where(s => s.End <= slot.Start)
                 .OrderByDescending(s => s.End)
                 .FirstOrDefault();
 
@@ -94,13 +109,16 @@ namespace Diplomka.Solver
         }
 
         /// <summary>
-        /// Kam rozhodčí po tomto slotu pojede –
-        /// na další slot pokud existuje, jinak domů.
+        /// Kam rozhodčí po tomto slotu pojede – na další slot pokud existuje, jinak domů.
         /// </summary>
-        private static Geo? GetDestination(Referee referee, Slot currentSlot, State state)
+        /// <param name="referee">Rozhodčí pro vyhodnocení</param>
+        /// <param name="slot">Slot pro vyhodnocení</param>
+        /// <param name="state">Stav pro kontext</param>
+        /// <returns>Lokace kam rozhodčí pojede</returns>
+        private static Geo? GetDestination(Referee referee, Slot slot, State state)
         {
             var next = state.GetSlotsByReferee(referee)
-                .Where(s => s.Start >= currentSlot.End)
+                .Where(s => s.Start >= slot.End)
                 .OrderBy(s => s.Start)
                 .FirstOrDefault();
 

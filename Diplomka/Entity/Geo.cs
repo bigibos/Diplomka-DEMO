@@ -121,7 +121,7 @@ namespace Diplomka.Entity
             }
             catch (HttpRequestException)
             {
-                return null; // Doslo k cybe site
+                return null; // Doslo k chybe site
             }
         }
 

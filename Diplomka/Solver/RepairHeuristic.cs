@@ -2,6 +2,9 @@ using Diplomka.Entity;
 
 namespace Diplomka.Solver
 {
+    /// <summary>
+    /// Opravný algoritmus sloužící ke snaze opravit nevhodná (unfeasable) řešení obsahující nezaplněné sloty
+    /// </summary>
     public class RepairHeuristic
     {
         private readonly List<Referee> _referees;
@@ -23,10 +26,18 @@ namespace Diplomka.Solver
             _config = config;
         }
 
+        /// <summary>
+        /// Hlavní opravná metoda.
+        /// Iteruje podle stanoveného početu pokusů <see cref="SolverConfiguration.MaxRepairPasses"/> kde v každém zkouší opravu dokud
+        /// existují některé prázdné sloty.
+        /// </summary>
+        /// <param name="state">Stav pro opravu</param>
+        /// <returns>V případě úspěchu je vrácen opravený stav</returns>
         public State Repair(State state)
         {
             var current = (State)state.Clone();
 
+            // Opravne pokusy
             for (int pass = 0; pass < _config.MaxRepairPasses; pass++)
             {
                 Console.WriteLine($"[Repair] Oprava {pass}");
@@ -38,12 +49,20 @@ namespace Diplomka.Solver
                 }
 
                 foreach (var slot in emptySlots)
-                    TryRepairSlot(current, slot);
+                    TryRepairSlot(current, slot); // Pokus o opravu
             }
 
             return current;
         }
 
+        /// <summary>
+        /// Zkouší postupně jednotlivé opravy.
+        ///     1) Prosté přiřazení
+        ///     2) Pokud předhcozí nevyjde tak řetězovou opravu
+        ///     3) Pokud nevyjde ani jedno tak nouzové přiřazení s relaxací omezení
+        /// </summary>
+        /// <param name="state">Stav ve kterém se provádí oprava</param>
+        /// <param name="slot">Slot pro opravu přiřazení</param>
         private void TryRepairSlot(State state, Slot slot)
         {
             if (TryStandardAssign(state, slot)) return;
@@ -51,6 +70,12 @@ namespace Diplomka.Solver
             TryFallbackAssign(state, slot);
         }
 
+        /// <summary>
+        /// Jednoduchý pokus o standardní přiřazení
+        /// </summary>
+        /// <param name="state">Stav ve kterém se provádí oprava</param>
+        /// <param name="slot">Slot pro opravu přiřazení</param>
+        /// <returns>True, když se oprava povede, jinak false</returns>
         private bool TryStandardAssign(State state, Slot slot)
         {
             var eligible = _conflictChecker.GetEligibleReferees(state, slot, _referees);
@@ -62,7 +87,13 @@ namespace Diplomka.Solver
             return true;
         }
 
-        // TODO: Dokumentace
+        /// <summary>
+        /// Filtruje kandidáty podle zadané filtrační funkce.
+        /// Navrženo pro relaxaci omezení (filtrační funkce), kde pokud je sodifltroavný seznam prázdný, tak se použije seznam původní.
+        /// </summary>
+        /// <param name="candidates">Kandidáti pro filtraci</param>
+        /// <param name="filter">Filtrační funkce</param>
+        /// <returns>Filtrovaný seznam kandidátů když není prázdný, jinak původní seznam kandidátů</returns>
         private static List<Referee> Relax(List<Referee> candidates, Func<Referee, bool> filter)
         {
             var filtered = candidates.Where(filter).ToList();
@@ -71,6 +102,18 @@ namespace Diplomka.Solver
 
         // Fallback prirazeni ktere relaxuje nektera omezeni - casy ale musi byt dodrzeny!
         // TODO: Dokumentace
+        /// <summary>
+        /// Nouzové přiřazení které na počátku vytvoří kandidáty podle časových překrytí (nutné omezení).
+        /// Dále se použivají relaxační funkce, které postupně zkoušení uplatnit další omezení v daném pořadí (priorita):
+        ///     1) Zkouší se uplatnit omezení zákazů na slot
+        ///     2) Zkouší se uplatnit omezení podhodnocení rozhodčích
+        ///     3) Zkouší se uplatnit omezení nesouladu rozhodčích
+        ///     4) Zkouší se uplatnit omezení maximálních slotů rozhodčího
+        /// Díky těmto relaxacím je možné získat větší počet kandidátu a opravit stav za cenu porušení některých podmínek.
+        /// </summary>
+        /// <param name="state">Stav ve kterém se provádí oprava</param>
+        /// <param name="slot">Slot pro opravu přiřazení</param>
+        /// <returns>True, když se oprava povede, jinak false</returns>
         private bool TryFallbackAssign(State state, Slot slot)
         {
             var candidates = _referees
@@ -98,6 +141,7 @@ namespace Diplomka.Solver
             return true;
         }
 
+        // Pomocná metoda pro ziskani seraeznych prazdnych slotu
         private List<Slot> GetEmptySlotsOrdered(State state) =>
             state.GetEmptySlots()
                  .OrderBy(s => s.RequiredRank)
@@ -106,15 +150,17 @@ namespace Diplomka.Solver
 
         /// <summary>
         /// Pokusí se uvolnit kolizní slot s nižší prioritou, aby se uvolnil rozhodčí.
-        /// Vrátí true, pokud se oprava povedla.
         /// </summary>
-        private bool TryChainRepair(State state, Slot targetSlot)
+        /// <param name="state">Stav ve kterém se provádí oprava</param>
+        /// <param name="slot">Slot pro opravu přiřazení</param>
+        /// <returns>True, když se oprava povede, jinak false</returns>
+        private bool TryChainRepair(State state, Slot slot)
         {
             var conflictingAssignments = state
                 .Where(p => p.Value != null
-                            && p.Value.Rank >= targetSlot.RequiredRank
-                            && _conflictChecker.Overlaps(p.Key, targetSlot)
-                            && p.Key.RequiredRank <= targetSlot.RequiredRank)
+                            && p.Value.Rank >= slot.RequiredRank
+                            && _conflictChecker.Overlaps(p.Key, slot)
+                            && p.Key.RequiredRank <= slot.RequiredRank)
                 .OrderBy(p => p.Key.RequiredRank)
                 .ToList();
 
@@ -123,7 +169,7 @@ namespace Diplomka.Solver
                 var referee = conflict.Value!;
                 state.ClearSlot(conflict.Key);
 
-                if (_conflictChecker.CanAssign(state, targetSlot, referee))
+                if (_conflictChecker.CanAssign(state, slot, referee))
                 {
                     // Hledej náhradu za uvolněný slot — GetEligibleReferees volá CanAssign,
                     // takže MaxRefereSlots je automaticky respektováno
@@ -132,7 +178,7 @@ namespace Diplomka.Solver
                         conflict.Key,
                         _referees.Where(r => !r.Equals(referee)).ToList());
 
-                    state.SetReferee(targetSlot, referee);
+                    state.SetReferee(slot, referee);
 
                     if (replacements.Count > 0)
                     {

@@ -64,12 +64,17 @@ namespace Diplomka.ImportExport
             return records.Select(CsvMapper.ToEntity).ToList();
         }
 
-        // TODO: Pridat dokumentacni komentar
-        public static void LoadBans(string bansPath, List<Referee> referees)
+        // TODO: Upravit na vkladani referenci slotu misto indexu
+        /// <summary>
+        /// Metoda pro načtení zákazu rozhodčích ke slotům z CSV souboru
+        /// </summary>
+        /// <param name="path">Cesta k souboru</param>
+        /// <param name="referees">Seznam rozhočích pro jejich nastavení</param>
+        public static void LoadBans(string path, List<Referee> referees)
         {
-            if (!File.Exists(bansPath)) return;
+            if (!File.Exists(path)) return;
 
-            using var reader = new StreamReader(bansPath);
+            using var reader = new StreamReader(path);
             using var csv = new CsvReader(reader, csvConfig);
             csv.Context.RegisterClassMap<BanMap>();
             csv.Read(); csv.ReadHeader();
@@ -83,12 +88,17 @@ namespace Diplomka.ImportExport
             }
         }
 
-        // TODO: Pridat dokumentacni komentar
-        public static void LoadIncompatible(string incompatiblePath, List<Referee> referees)
+        // TODO: Upravit na vkladani referenci rozhodcich misto indexu
+        /// <summary>
+        /// Metoda pro načtení vzájemné nesnášenlivostí rozhodčích z CSV souboru
+        /// </summary>
+        /// <param name="path">Cesta k souboru</param>
+        /// <param name="referees">Seznam rozhočích pro jejich nastavení</param>
+        public static void LoadIncompatible(string path, List<Referee> referees)
         {
-            if (!File.Exists(incompatiblePath)) return;
+            if (!File.Exists(path)) return;
 
-            using var reader = new StreamReader(incompatiblePath);
+            using var reader = new StreamReader(path);
             using var csv = new CsvReader(reader, csvConfig);
             csv.Context.RegisterClassMap<IncompatibleMap>();
             csv.Read(); csv.ReadHeader();

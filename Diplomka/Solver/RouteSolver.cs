@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace Diplomka.Solver
 {
+    /// <summary>
+    /// Třídá sloužící k zjištění optimální trasy pro rozhodčího.
+    /// V zásadě se zde vyhodnocuje, jestli bude rozhodší v rámci přesunů mezi sloty cestovat přímo, nebo se bude vracet domů
+    /// </summary>
     public class RouteSolver
     {
         private RouteTable _distanceTable;
@@ -19,10 +23,27 @@ namespace Diplomka.Solver
             _config = config;
         }
 
-        /*
-         * Vypocet vhodne trasy pro rozhodciho
-         * State slouzi jako kontext (jake sloty predchazi aktualnimu a jak se vypocita vzdalenost)
-         */
+
+        // TODO: Null hodnoty
+        /// <summary>
+        /// Hlavní výpočetní metoda pro zjištění optimální trasy.
+        ///     1) Seřazení slotů, která má rozhodčí přiřazený, chronolgicky podle času
+        ///     2) Získání předcházejícího slotu vučí aktuálně zkoumanému
+        ///     3) Zjištení časového okna mezi sloty a získání tras:
+        ///         a) Z předchozího slotu do aktuálního slotu
+        ///         b) Z předchozího slotu do zázemí
+        ///         c) Z aktuálního slotu do zázemí
+        ///     4) Výpočet promarněného času při cestě:
+        ///         a) předchozí -> zázemí -> aktuální
+        ///         b) předchozí -> aktuální
+        ///     5) Promarněný čas implicitně ukazuje i čas potřebný na cestu - čím dělší promarněný čas, tím kratší čas na přesun
+        ///     6) Vybere se větší promarněný čas z obou výpočtů a zkontroluje se vúči golbálně nastavenému maixmu
+        ///     7) Nakonec je vybrána trassa s největším promarněným časem, který neporušuje maximum (jako fallback je vždy trasa přes domov)
+        /// </summary>
+        /// <param name="state">Stav pro kontext a hledání sousedů</param>
+        /// <param name="slot">Slot k vyhodnocení</param>
+        /// <param name="referee">Rozhodčí k vyhodnocení</param>
+        /// <returns>Optimálně zvolenou trasu</returns>
         public RouteInfo? ComputeOptimalRoute(State state, Slot slot, Referee? referee)
         {
             if (referee == null)
@@ -35,20 +56,7 @@ namespace Diplomka.Solver
 
             // Najdi sousedy v časové sekvenci
             var prev = existing.LastOrDefault(s => s.End <= slot.Start);
-            var next = existing.FirstOrDefault(s => s.Start >= slot.End);
 
-
-            /*
-             * Zjistim predchozi a nasledujici slot
-             * Pokud neexistuje, tak misto jeho lokace zvolim lokaci zazemi
-             * Budeme pracovat s pomerem promarneho casu a procestovaneho casu
-             * - Zjistim casove okno mezi sloty (prirazovany slot a sousedni slot)
-             * - Zjistim procestovany cas mezi sloty (prirazovany slot a sousedni slot)
-             * - Zjistim procestovany cas mezi sloty pres zazemi (prirazovany slot a sousedni slot pres zazemi)
-             * -- Cas ze slotu do zazemi + cas ze zazemi do sousedniho slotu
-             * - Veberu tu moznost kde pomer promarneho casu a procestovaneho casu je vetsi
-             * -- Pokud je promarneny cas vetsi nez konfiguracni mez, rozhodnu se pro presun domu
-             */
             var timeWindowPrev = prev != null ? (slot.Start - prev.End) : TimeSpan.Zero;
 
             var routePrev = prev != null ? _distanceTable.GetRouteInfo(prev.Location, slot.Location) : null;
@@ -57,13 +65,8 @@ namespace Diplomka.Solver
 
             if (prev == null)
                 return routeHome;
-            
-
-            /*
-             * Waste time oznacuje promarneny cas - cili cas ktery zbyde z casoveho okne po odecteni cestovniho casu
-             * Vybirame vetsi waste time, protoze ten nam zajisti mensi cestovni cas
-             * Pokud je waste time vetsi nez nastavena mez, rozhodneme se pro presun ze zazemi
-             */
+           
+            // Vypocet promarneneho casu
             var homeWasteTime = timeWindowPrev - (routeHomePrev.Duration + routeHome.Duration);
             var prevWasteTime = timeWindowPrev - routePrev.Duration;
 

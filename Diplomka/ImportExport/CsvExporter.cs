@@ -76,7 +76,11 @@ namespace Diplomka.ImportExport
             csv.WriteRecords(dtos);
         }
 
-        // TODO: Dokumentacni kometar
+        /// <summary>
+        /// Metoda pro uložení návrhu společného cestování do CSV souboru
+        /// </summary>
+        /// <param name="path">Cesta k souboru, který se má vytvořit</param>
+        /// <param name="groups">Seznam utvořených cestovních skupin společného cestování</param>
         public static void SaveCarGroups(string path, List<CarGroupOptimizer.CarGroup> groups)
         {
             var dtos = CarGroupCsvMapper.ToDtoList(groups);
