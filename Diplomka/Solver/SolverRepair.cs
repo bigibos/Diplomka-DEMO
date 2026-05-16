@@ -50,11 +50,11 @@ namespace Diplomka.Solver
             // Opravne pokusy
             for (int pass = 0; pass < _config.MaxRepairPasses; pass++)
             {
-                Emit(new SolverEvent.InfoEvent { Message = $"Oprava {pass}" });
+                Emit(new SolverEvent.InfoEvent($"Opravný pokus {pass}"));
                 var emptySlots = GetEmptySlotsOrdered(current);
                 if (emptySlots.Count == 0)
                 {
-                    Emit(new SolverEvent.InfoEvent { Message = $"Oprava se podařila" });
+                    Emit(new SolverEvent.InfoEvent($"Oprava se podařila"));
                     break;
                 }
 
@@ -94,7 +94,6 @@ namespace Diplomka.Solver
 
             var best = eligible.OrderBy(r => _costCalculator.AssignmentCost(slot, r)).First();
             state.SetReferee(slot, best);
-            Console.WriteLine($"[Repair] Standard {best.Name} -> {slot.Name}, {slot.Start}");
             return true;
         }
 
@@ -147,7 +146,6 @@ namespace Diplomka.Solver
             if (fallback == null)
                 return false;
 
-            Console.WriteLine($"[Repair] Fallback {fallback.Name} -> {slot.Name}, {slot.Start}");
             state.SetReferee(slot, fallback);
             return true;
         }
@@ -197,7 +195,6 @@ namespace Diplomka.Solver
                             .OrderBy(r => _costCalculator.AssignmentCost(conflict.Key, r))
                             .First();
                         state.SetReferee(conflict.Key, replacement);
-                        Console.WriteLine($"[Repair] Chain {replacement.Name} -> {conflict.Key.Name}, {conflict.Key.Start}");
                     }
                     // Uvolněný slot zůstane prázdný – zpracuje se v další iteraci
                     return true;

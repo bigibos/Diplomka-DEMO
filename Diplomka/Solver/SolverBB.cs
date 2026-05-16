@@ -107,6 +107,7 @@ namespace Diplomka.Solver
             var slotList = slots.ToList();
 
             Emit(new SolverEvent.InfoEvent($"Vytáření počátečních stavů"));
+
             // Fáze 1: Greedy jako základ
             var greedy = new SolverGreedy(_referees, _conflictChecker, _costCalculator);
             greedy.OnEvent += Forward;
@@ -178,12 +179,12 @@ namespace Diplomka.Solver
 
             // Prubezny vypis
             if (_nodesExplored % 5_000 == 0)
-                Emit(new SolverEvent.InfoEvent($"Prozkoumáno {_nodesExplored} uzlů"));
+                Emit(new SolverEvent.TimeCheckEvent(DateTime.UtcNow - _startTime, _nodesExplored));
 
             if (_timeLimitExceeded)
                 return;
 
-            // Kontrola otima pri zaplneni vsech slotu
+            // Kontrola optima pri zaplneni vsech slotu
             if (emptySlots.Count == 0)
             {
                 if (costSoFar < _bestCost)

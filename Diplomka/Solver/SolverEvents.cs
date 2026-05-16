@@ -17,6 +17,6 @@ namespace Diplomka.Solver
         public record ImprovementEvent(double PreviousCost, double NewCost, string Message = "") : SolverEvent;
         public record InfoEvent(string Message = "") : SolverEvent;
         public record TimeOutEvent(string Message = "") : SolverEvent;
-        public record TimeCheckEvent(long ElapsedMs, long? NodesExplored = null, string Message = "") : SolverEvent;
+        public record TimeCheckEvent(TimeSpan time, long? NodesExplored = null, string Message = "") : SolverEvent;
     }
 }
