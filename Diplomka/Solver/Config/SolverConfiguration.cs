@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Config
 {
     /// <summary>
     /// Konfiguracni záznam pro nastavování globálních parametrů

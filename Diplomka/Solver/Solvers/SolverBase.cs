@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Solvers
 {
 
     /// <summary>

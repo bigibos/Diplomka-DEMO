@@ -3,6 +3,9 @@ using Diplomka.Entity;
 using Diplomka.ImportExport;
 using Diplomka.Routing;
 using Diplomka.Solver;
+using Diplomka.Solver.Config;
+using Diplomka.Solver.Services;
+using Diplomka.Solver.Solvers;
 using Diplomka.Utils;
 using System.Diagnostics;
 using System.Net.Http.Headers;
@@ -98,7 +101,7 @@ await distanceTable.Initialize(allLocations);
  * Inicializace pomocnych trid a solveru
  * ---------------------------------------
  */
-var routeSolver = new RouteSolver(distanceTable, config);
+var routeSolver = new RouteOptimizer(distanceTable, config);
 var conflictChecker = new ConflictChecker(distanceTable, config);
 var costCalculator = new CostCalculator(distanceTable, config);
 

@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Diplomka.Solver.Services;
 
 namespace Diplomka.ImportExport
 {
@@ -64,7 +65,7 @@ namespace Diplomka.ImportExport
         /// <param name="path">Cesta k souboru, který se má vytvořit</param>
         /// <param name="state">Stav, který se má převést a uložit</param>
         /// <param name="routeSolver">Kalkulátor, který k ukládyným přiřazenám ve stavu vypočítá a uloží záznamy o trasách</param>
-        public static void SaveState(string path, State state, RouteSolver routeSolver)
+        public static void SaveState(string path, State state, RouteOptimizer routeSolver)
         {
             var dtos = StateCsvMapper.ToDtoList(state, routeSolver);
             dtos = dtos.OrderBy(s => s.From).ToList();
@@ -81,7 +82,7 @@ namespace Diplomka.ImportExport
         /// </summary>
         /// <param name="path">Cesta k souboru, který se má vytvořit</param>
         /// <param name="groups">Seznam utvořených cestovních skupin společného cestování</param>
-        public static void SaveCarGroups(string path, List<CarGroupOptimizer.CarGroup> groups)
+        public static void SaveCarGroups(string path, List<TravelOptimizer.CarGroup> groups)
         {
             var dtos = CarGroupCsvMapper.ToDtoList(groups);
             dtos = dtos.OrderBy(s => s.From).ToList();

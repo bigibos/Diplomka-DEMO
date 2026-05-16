@@ -1,7 +1,8 @@
 using Diplomka.Entity;
 using Diplomka.Routing;
+using Diplomka.Solver.Config;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Services
 {
     /// <summary>
     /// Slouží pro kontrolu podmínek přiřazení a konfliktů

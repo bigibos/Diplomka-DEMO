@@ -1,7 +1,8 @@
 ﻿using Diplomka.Entity;
-using Diplomka.Solver;
+using Diplomka.Solver.Config;
+using Diplomka.Solver.Services;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Solvers
 {
     /// <summary>
     /// Hlavní optimalizační algoritmus.

@@ -1,5 +1,5 @@
 ﻿using Diplomka.ImportExport.Dto;
-using Diplomka.Solver;
+using Diplomka.Solver.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +10,7 @@ namespace Diplomka.ImportExport.Mapping
 {
     public class CarGroupCsvMapper
     {
-        public static List<CarGroupCsvDto> ToDtoList(List<CarGroupOptimizer.CarGroup> groups)
+        public static List<CarGroupCsvDto> ToDtoList(List<TravelOptimizer.CarGroup> groups)
         {
             var result = new List<CarGroupCsvDto>();
 

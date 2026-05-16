@@ -1,6 +1,8 @@
 using Diplomka.Entity;
+using Diplomka.Solver.Config;
+using Diplomka.Solver.Services;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Solvers
 {
     /// <summary>
     /// Opravný algoritmus sloužící ke snaze opravit nevhodná (unfeasable) řešení obsahující nezaplněné sloty

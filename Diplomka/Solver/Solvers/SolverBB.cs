@@ -1,6 +1,8 @@
 using Diplomka.Entity;
+using Diplomka.Solver.Config;
+using Diplomka.Solver.Services;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Solvers
 {
     /// <summary>
     /// Hlavní optimalizační algoritmus.
@@ -258,8 +260,8 @@ namespace Diplomka.Solver
                 lbSum += minCost;
 
                 if (candidates.Count < bestCount ||
-                    (candidates.Count == bestCount &&
-                     slot.RequiredRank > (best?.RequiredRank ?? 0)))
+                    candidates.Count == bestCount &&
+                     slot.RequiredRank > (best?.RequiredRank ?? 0))
                 {
                     bestCount = candidates.Count;
                     best = slot;

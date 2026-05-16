@@ -1,4 +1,6 @@
 using Diplomka.Entity;
+using Diplomka.Solver.Services;
+using Diplomka.Solver.Solvers;
 
 namespace Diplomka.Solver
 {

@@ -1,8 +1,9 @@
 using Diplomka.Entity;
 using Diplomka.Routing;
+using Diplomka.Solver.Config;
 using System.Collections.Generic;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Services
 {
     /// <summary>
     /// Slouží pro výpočet cen přiřazní a cen celých stavů řešení.
@@ -12,13 +13,13 @@ namespace Diplomka.Solver
        
         private readonly SolverConfiguration _config;
         private readonly RouteTable _distanceTable;
-        private readonly RouteSolver _routeSolver;
+        private readonly RouteOptimizer _routeSolver;
 
         public CostCalculator(RouteTable distanceTable, SolverConfiguration config)
         {
             _config = config;   
             _distanceTable = distanceTable;
-            _routeSolver = new RouteSolver(_distanceTable, _config);
+            _routeSolver = new RouteOptimizer(_distanceTable, _config);
         }
 
         /// <summary>

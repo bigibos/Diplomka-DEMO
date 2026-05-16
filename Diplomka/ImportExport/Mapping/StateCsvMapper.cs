@@ -1,5 +1,6 @@
 ﻿using Diplomka.ImportExport.Dto;
 using Diplomka.Solver;
+using Diplomka.Solver.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace Diplomka.ImportExport.Mapping
     /// </summary>
     public static class StateCsvMapper
     {
-        public static List<StateCsvDto> ToDtoList(State state, RouteSolver routeSolver)
+        public static List<StateCsvDto> ToDtoList(State state, RouteOptimizer routeSolver)
         {
             var result = new List<StateCsvDto>();
 

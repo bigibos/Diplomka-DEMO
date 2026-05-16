@@ -1,11 +1,11 @@
 ﻿using Diplomka.Entity;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Services
 {
     /// <summary>
     /// Třída sloužící k optimalizování a návrhu lepšího cestování pomocí společné cesty rozhodčích.
     /// </summary>
-    public class CarGroupOptimizer
+    public class TravelOptimizer
     {
         /// <summary>
         /// Pomocný třída pro vytvoření cestovních skupin - jeden řidič a seznam pasažérů

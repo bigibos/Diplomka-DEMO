@@ -1,23 +1,24 @@
 ﻿using Diplomka.Entity;
 using Diplomka.Routing;
+using Diplomka.Solver.Config;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Diplomka.Solver
+namespace Diplomka.Solver.Services
 {
     /// <summary>
     /// Třídá sloužící k zjištění optimální trasy pro rozhodčího.
     /// V zásadě se zde vyhodnocuje, jestli bude rozhodší v rámci přesunů mezi sloty cestovat přímo, nebo se bude vracet domů
     /// </summary>
-    public class RouteSolver
+    public class RouteOptimizer
     {
         private RouteTable _distanceTable;
         private SolverConfiguration _config;
 
-        public RouteSolver(RouteTable distanceTable, SolverConfiguration config)
+        public RouteOptimizer(RouteTable distanceTable, SolverConfiguration config)
         {
             _distanceTable = distanceTable;
             _config = config;
@@ -57,7 +58,7 @@ namespace Diplomka.Solver
             // Najdi sousedy v časové sekvenci
             var prev = existing.LastOrDefault(s => s.End <= slot.Start);
 
-            var timeWindowPrev = prev != null ? (slot.Start - prev.End) : TimeSpan.Zero;
+            var timeWindowPrev = prev != null ? slot.Start - prev.End : TimeSpan.Zero;
 
             var routePrev = prev != null ? _distanceTable.GetRouteInfo(prev.Location, slot.Location) : null;
             var routeHomePrev = prev != null ? _distanceTable.GetRouteInfo(prev.Location, referee.Location) : null;
