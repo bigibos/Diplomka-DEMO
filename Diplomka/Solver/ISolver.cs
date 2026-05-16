@@ -26,5 +26,10 @@ namespace Diplomka.Solver
         /// <returns>Stav nejlepšího nalezené řešení</returns>
         State Solve(State state);
 
+        /// <summary>
+        /// Standardní event pro komunikaci průběhu řešení, který může být využit pro logování, vizualizaci nebo sledování pokroku.
+        /// </summary>
+        event Action<SolverEvent>? OnEvent;
+
     }
 }

@@ -108,7 +108,7 @@ var costCalculator = new CostCalculator(distanceTable, config);
  * Inicializace LNS
  * ---------------------------------------
  */
-var lnsSolver = new LnsBbSolver(
+var lnsSolver = new SolverLNS(
     referees,
     conflictChecker,
     costCalculator,
@@ -119,7 +119,7 @@ var lnsSolver = new LnsBbSolver(
     MaxIterations = 300,    // celkový počet iterací
     MaxAttempts = 30,     // restart po X neúspěších
     IterationTimeLimit = TimeSpan.FromSeconds(2), // limit mini B&B
-    Strategy = LnsBbSolver.NeighborhoodStrategy.CostWeighted
+    Strategy = SolverLNS.NeighborhoodStrategy.CostWeighted
 };
 
 
@@ -129,7 +129,7 @@ var lnsSolver = new LnsBbSolver(
  * Inicializace Branch & Bound
  * ---------------------------------------
  */
-var bbSolver = new BBSolver(
+var bbSolver = new SolverBB(
     referees,
     conflictChecker,
     costCalculator,
@@ -142,7 +142,7 @@ var bbSolver = new BBSolver(
  * Inicializace Hill Climbing
  * ---------------------------------------
  */
-var hcSolver = new HCSolver(
+var hcSolver = new SolverHC(
     referees,
     conflictChecker,
     costCalculator,

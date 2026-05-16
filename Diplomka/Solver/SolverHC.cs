@@ -9,8 +9,10 @@ namespace Diplomka.Solver
     ///     - Stochastický
     ///     - Stavy řešení jsou nepředvídatelné (prvek náhody)
     /// </summary>
-    public class HCSolver : ISolver
+    public class SolverHC : SolverBase
     {
+
+
         private readonly List<Referee> _referees;
         private readonly Random _random = new Random();
 
@@ -20,13 +22,14 @@ namespace Diplomka.Solver
 
         private State? _bestState;
         private double _bestCost;
+
         public double BestCost => _bestCost;
 
         public int MaxAttempts { get; set; } = 100;
         public int MaxIterations { get; set; } = 2000;
         public int MaxMoves { get; set; } = 50;
 
-        public HCSolver(
+        public SolverHC(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
@@ -41,22 +44,29 @@ namespace Diplomka.Solver
 
         /// <summary>
         /// Vytvoření počátečního startu pro warm start.
-        /// Využívají se algortimy <see cref="GreedySolver"/> a <see cref="RepairHeuristic"/> pro opravu.
+        /// Využívají se algortimy <see cref="SolverGreedy"/> a <see cref="SolverRepair"/> pro opravu.
         /// </summary>
         /// <param name="slots">Seznam slotů pro jejich naplnění</param>
         /// <returns>Hotový počáteční stav</returns>
         private State InitialState(IEnumerable<Slot> slots)
         {
-            Console.WriteLine($"[MaxSlots] {_config.MaxRefereSlots}");
-            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots);
-            var emptyAfterGreedy = greedyState.GetEmptySlots().ToList();
+            var greedy = new SolverGreedy(_referees, _conflictChecker, _costCalculator);
+            greedy.OnEvent += Forward;
+
+            var initState = greedy.Solve(slots);
+
+            var emptyAfterGreedy = initState.GetEmptySlots().ToList();
             if (emptyAfterGreedy.Count > 0)
             {
-                Console.WriteLine($"[Greedy] Nezaplnil {emptyAfterGreedy.Count} slotů. Oprava...");
-                greedyState = new RepairHeuristic(_referees, _conflictChecker, _costCalculator, _config).Repair(greedyState);
+                var repair = new SolverRepair(_referees, _conflictChecker, _costCalculator, _config);
+                repair.OnEvent += Forward; 
+
+                // Console.WriteLine($"[Greedy] Nezaplnil {emptyAfterGreedy.Count} slotů. Oprava...");
+                // Emit(new SolverEvent.InfoEvent($"Nezaplněno {emptyAfterGreedy.Count} slotů."));
+                initState = repair.Solve(initState);    
             }
             
-            return greedyState;
+            return initState;
         }
 
         /// <summary>
@@ -89,10 +99,12 @@ namespace Diplomka.Solver
         /// </summary>
         /// <param name="state">Počáteční stav pro warm start</param>
         /// <returns>Stav nejlepšího nalezené řešení</returns>
-        public State Solve(State state)
+        override public State Solve(State state)
         {
             _bestState = (State)state.Clone();
             _bestCost = _costCalculator.TotalCost(_bestState);
+
+            Emit(new SolverEvent.StartEvent(_bestCost));
 
             for (int attempt = 0; attempt < MaxAttempts; attempt++)
             {
@@ -101,6 +113,7 @@ namespace Diplomka.Solver
                 for (int p = 0; p < 20; p++) ApplyRandomMove(currentState); // perturbace
                 var currentCost = _costCalculator.TotalCost(currentState);
 
+                // TODO: Predelat do dvou urovni smycek (podle navrhu v teorii)
                 for (int iteration = 0; iteration < MaxIterations; iteration++)
                 {
                     bool improved = false;
@@ -125,13 +138,13 @@ namespace Diplomka.Solver
 
                 if (currentCost < _bestCost)
                 {
+                    Emit(new SolverEvent.ImprovementEvent(_bestCost, currentCost));
                     _bestState = (State)currentState.Clone();
                     _bestCost = currentCost;
-                    Console.WriteLine($"[HC] Nalezena nová nejlepší cena: {_bestCost:F2}");
                 }
             }
 
-            Console.WriteLine($"[HC] Hotovo. Nejlepší cena: {_bestCost:F2}");
+            Emit(new SolverEvent.FinishEvent(_bestCost));
             return _bestState!;
         }
 
@@ -140,7 +153,7 @@ namespace Diplomka.Solver
         /// </summary>
         /// <param name="slots">Seznam slotů k zaplnění.</param>
         /// <returns>Stav nejlepšího nalezené řešení</returns>
-        public State Solve(IEnumerable<Slot> slots)
+        override public State Solve(IEnumerable<Slot> slots)
         {
             var initialState = InitialState(slots.ToList());
             return Solve(initialState);

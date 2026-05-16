@@ -10,14 +10,14 @@ namespace Diplomka.Solver
     /// Díky tomu je možné sestavovat rychlá poèáteèní øešení, která však pro složitìjší problémi mùžou zanechávat
     /// nektìré sloty prázdné z dùvodu "vyžrání" vhodných rozhodèích pøedèasnì (proto hladový)
     /// </summary>
-    public class GreedySolver : ISolver
+    public class SolverGreedy : SolverBase
     {
         private readonly List<Referee> _referees;
 
         private readonly ConflictChecker _conflictChecker;
         private readonly CostCalculator _costCalculator;
 
-        public GreedySolver(
+        public SolverGreedy(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator
@@ -29,12 +29,12 @@ namespace Diplomka.Solver
         }
 
         /// <summary>
-        /// Pøetížení hlavní metody algoritmu <see cref="GreedySolver.Solve(IEnumerable{Slot})"/>.
+        /// Pøetížení hlavní metody algoritmu <see cref="SolverGreedy.Solve(IEnumerable{Slot})"/>.
         /// Místo seznamu rozhodèích využívá stav.
         /// </summary>
         /// <param name="state">Stav pro vybrání seznamu slotù pro jejich zaplnìní</param>
         /// <returns>Nový sestavný stav øešení</returns>
-        public State Solve(State state)
+        override public State Solve(State state)
         {
             return Solve(state.GetSlots());
         }
@@ -47,8 +47,9 @@ namespace Diplomka.Solver
         /// </summary>
         /// <param name="slots">Seznam slotù pro jejich zaplnìní</param>
         /// <returns>Nový sestavený stav øešení</returns>
-        public State Solve(IEnumerable<Slot> slots)
+        override public State Solve(IEnumerable<Slot> slots)
         {
+            Emit(new SolverEvent.StartEvent());
             var state = new State();
 
             // Serazeni slotu podle potrebne urovne
@@ -78,6 +79,7 @@ namespace Diplomka.Solver
                 state.SetReferee(slot, best);
             }
 
+            Emit(new SolverEvent.FinishEvent(_costCalculator.TotalCost(state)));
             return state;
         }
     }

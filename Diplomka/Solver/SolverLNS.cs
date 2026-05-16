@@ -8,7 +8,7 @@ namespace Diplomka.Solver
     ///     - Large Neighborhood Search (LNS) s opravným Branch & Bound
     ///     - Řešení strategicky zvolených skupin stavového prostoru
     /// </summary>
-    public class LnsBbSolver : ISolver
+    public class SolverLNS : SolverBase
     {
         private readonly List<Referee> _referees;
         private readonly ConflictChecker _conflictChecker;
@@ -44,7 +44,7 @@ namespace Diplomka.Solver
         public int ImprovingIterations { get; private set; }
         public double BestCost { get; private set; }
 
-        public LnsBbSolver(
+        public SolverLNS(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
@@ -57,15 +57,15 @@ namespace Diplomka.Solver
         }
 
         /// <summary>
-        /// Přetížení hlavní metody algoritmu <see cref="Solve(State)"/> s vlastní tvorbou počátečního stavu pomocí <see cref="GreedySolver"/> a <see cref="RepairHeuristic"/>
+        /// Přetížení hlavní metody algoritmu <see cref="Solve(State)"/> s vlastní tvorbou počátečního stavu pomocí <see cref="SolverGreedy"/> a <see cref="SolverRepair"/>
         /// </summary>
         /// <param name="slots">Seznam slotů k zaplnění</param>
         /// <returns>Stav nejlepšího nalezené řešení</returns>
-        public State Solve(IEnumerable<Slot> slots)
+        override public State Solve(IEnumerable<Slot> slots)
         {
-            Console.WriteLine("[LNS] Spouštím greedy warm start...");
-            var initial = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slots.ToList());
-            initial = new RepairHeuristic(_referees, _conflictChecker, _costCalculator, _config).Repair(initial);
+            // Console.WriteLine("[LNS] Spouštím greedy warm start...");
+            var initial = new SolverGreedy(_referees, _conflictChecker, _costCalculator).Solve(slots.ToList());
+            initial = new SolverRepair(_referees, _conflictChecker, _costCalculator, _config).Solve(initial);
             return Solve(initial);
         }
 
@@ -75,13 +75,13 @@ namespace Diplomka.Solver
         /// Použije počáteční řešení a pokusí se ho vylepšít fázemi:
         ///     1) Destroy - vybere se určitý počet slotů, kterée se uvolní pro nová přiřazení pomocí zvolené strategie
         ///     2) Restric - vyberou se vhodní kandidáti pro přiřazení do uvolněné skupiny slotů
-        ///     3) Repair - pomocí <see cref="BBSolver"/> se provedou přiřazení na vybrané skupně slotů s vybranými kandidátmi
+        ///     3) Repair - pomocí <see cref="SolverBB"/> se provedou přiřazení na vybrané skupně slotů s vybranými kandidátmi
         ///     4) Merge - skupina zaplněných slotů se sloučí se zbytkem stavu
         ///     5) Accept - při zlepšení se akceptuje nové řešení, jinak se zkouší znovu až do překročení limitu
         /// </summary>
         /// <param name="state">Počateční stav k vylepšení</param>
         /// <returns>Stav nejlepšího nalezené řešení</returns>
-        public State Solve(State state)
+        override public State Solve(State state)
         {
             TotalIterations = 0;
             ImprovingIterations = 0;
@@ -91,7 +91,8 @@ namespace Diplomka.Solver
             BestCost = _costCalculator.TotalCost(best);
             int noImprovementCount = 0;
 
-            Console.WriteLine($"[LNS] Start, cena: {BestCost:F2}, iterací: {MaxIterations}");
+            Emit(new SolverEvent.StartEvent(BestCost));
+            // Console.WriteLine($"[LNS] Start, cena: {BestCost:F2}, iterací: {MaxIterations}");
 
             for (int iter = 0; iter < MaxIterations; iter++)
             {
@@ -109,6 +110,10 @@ namespace Diplomka.Solver
 
                 if (mergedCost < BestCost)
                 {
+                    if (mergedCost + 10 < BestCost) // jen pro výraznější zlepšení
+                    {
+                        Emit(new SolverEvent.ImprovementEvent(BestCost, mergedCost));
+                    }
                     BestCost = mergedCost;
                     best = (State)merged.Clone();
                     current = best;
@@ -126,11 +131,13 @@ namespace Diplomka.Solver
                 }
             }
 
+            Emit(new SolverEvent.FinishEvent(BestCost));    
+
             return best;
         }
 
         /// <summary>
-        /// Repair fáze vuyžívající <see cref="BBSolver"/>
+        /// Repair fáze vuyžívající <see cref="SolverBB"/>
         /// </summary>
         /// <param name="current">Aktuální stav</param>
         /// <param name="neighborhood">Sousedství vybrané strategií</param>
@@ -140,13 +147,14 @@ namespace Diplomka.Solver
         {
             try
             {
-                var solver = new BBSolver(candidates, _conflictChecker, _costCalculator,
-                                          _config, timeLimit: IterationTimeLimit);
+                var solver = new SolverBB(candidates, _conflictChecker, _costCalculator, _config, IterationTimeLimit);
+                // solver.OnEvent += Forward;
+
                 return solver.Solve(current, neighborhood);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[LNS] Repair selhal: {ex.Message}");
+                // Console.WriteLine($"[LNS] Repair selhal: {ex.Message}");
                 return current; // fallback
             }
         }

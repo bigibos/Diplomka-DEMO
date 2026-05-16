@@ -6,9 +6,9 @@ namespace Diplomka.Solver
     /// Hlavní optimalizační algoritmus.
     ///     - Branch & Bound s warm startem pro horní mez
     ///     - Deterministický (exaktní)
-    ///     - V základu pro stejné vstupy vždy najde stejné řešení, ALE s použítím <see cref="HCSolver"/> pro warm start to neplatí
+    ///     - V základu pro stejné vstupy vždy najde stejné řešení, ALE s použítím <see cref="SolverHC"/> pro warm start to neplatí
     /// </summary>
-    public class BBSolver : ISolver
+    public class SolverBB : SolverBase
     {
         private readonly List<Referee> _referees;
         private readonly TimeSpan _timeLimit;
@@ -28,7 +28,7 @@ namespace Diplomka.Solver
         public double BestCost => _bestCost;
 
 
-        public BBSolver(
+        public SolverBB(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
@@ -47,7 +47,7 @@ namespace Diplomka.Solver
 
         /// <summary>
         /// Přetížení hlavní metody algoritmu <see cref="Solve(IEnumerable{Slot})"/>
-        /// Částečné řešení vybrané části stavu. Využívá se především v <see cref="LnsBbSolver"/>
+        /// Částečné řešení vybrané části stavu. Využívá se především v <see cref="SolverLNS"/>
         /// </summary>
         /// <param name="context">Stav pro kontext přiřazení</param>
         /// <param name="slotsToOptimize">Sloty ze kontextu, které se mají optimalizovat</param>
@@ -84,21 +84,21 @@ namespace Diplomka.Solver
         /// </summary>
         /// <param name="state">Stov s počátečním řešením</param>
         /// <returns>Stav nejlepšího nalezené řešení</returns>
-        public State Solve(State state)
+        override public State Solve(State state)
         {
             return Solve(state, null);
         }
 
         /// <summary>
         /// Hlavní metoda algoritmu.
-        ///     1) Vytvoří se stav pomocí <see cref="GreedySolver"/>
-        ///     2) Vytvoří se stav pomocí <see cref="HCSolver"/>
+        ///     1) Vytvoří se stav pomocí <see cref="SolverGreedy"/>
+        ///     2) Vytvoří se stav pomocí <see cref="SolverHC"/>
         ///     3) Vybere se lepší počáteční stav pro warm start a horní mez
         ///     4) Branch & Bound se rekurzivním voláním <see cref="Dfs(State, double, List{Slot})"/> pokusí počáteční stav zlepšit
         /// </summary>
         /// <param name="slots">Sloty k zaplnění</param>
         /// <returns>Stav nejlepšího nalezené řešení</returns>
-        public State Solve(IEnumerable<Slot> slots)
+        override public State Solve(IEnumerable<Slot> slots)
         {
             _startTime = DateTime.UtcNow;
             _nodesExplored = 0;
@@ -106,40 +106,45 @@ namespace Diplomka.Solver
 
             var slotList = slots.ToList();
 
+            Emit(new SolverEvent.InfoEvent($"Vytáření počátečních stavů"));
             // Fáze 1: Greedy jako základ
-            Console.WriteLine("[B&B] Spouštím greedy heuristiku...");
-            var greedyState = new GreedySolver(_referees, _conflictChecker, _costCalculator).Solve(slotList);
+            var greedy = new SolverGreedy(_referees, _conflictChecker, _costCalculator);
+            greedy.OnEvent += Forward;
+            var greedyState = greedy.Solve(slotList);
+            var greedyCost = _costCalculator.TotalCost(greedyState);
 
             // Fáze 2: HC pro lepší upper bound
-            Console.WriteLine("[B&B] Spouštím HC pro lepší počáteční řešení...");
-            var hcState = new HCSolver(_referees, _conflictChecker, _costCalculator, _config).Solve(slots);
+            var hc = new SolverHC(_referees, _conflictChecker, _costCalculator, _config);
+            hc.OnEvent += Forward;
+            var hcState = hc.Solve(slots);
             var hcCost = _costCalculator.TotalCost(hcState);
-            var greedyCost = _costCalculator.TotalCost(greedyState);
 
             // Vybereme lepší z greedy a HC jako warm start
             if (hcCost < greedyCost)
             {
+                Emit(new SolverEvent.InfoEvent($"Zvolen HC"));
                 _bestState = hcState;
                 _bestCost = hcCost;
-                Console.WriteLine($"[B&B] HC zlepšilo warm start: {greedyCost:F2} → {hcCost:F2}");
             }
             else
             {
+                Emit(new SolverEvent.InfoEvent($"Zvolen Greedy"));
                 _bestState = greedyState;
                 _bestCost = greedyCost;
             }
 
-            Console.WriteLine($"[B&B] Počáteční cena (warm start): {_bestCost:F2}");
+            Emit(new SolverEvent.StartEvent(BestCost));
 
             // Fáze 3: B&B se pokusí zlepšit warm start
-            Console.WriteLine($"[B&B] Spouštím B&B (limit: {_timeLimit.TotalSeconds} s)...");
             var initialState = new State();
             foreach (var slot in slotList)
                 initialState.AddSlot(slot);
 
             Dfs(initialState, 0.0, slotList);
 
-            Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {_nodesExplored}, nejlepší cena: {_bestCost:F2}");
+            Emit(new SolverEvent.FinishEvent(BestCost));
+
+            // Console.WriteLine($"[B&B] Hotovo. Prozkoumáno uzlů: {_nodesExplored}, nejlepší cena: {_bestCost:F2}");
             return _bestState!;
         }
 
@@ -173,7 +178,7 @@ namespace Diplomka.Solver
 
             // Prubezny vypis
             if (_nodesExplored % 5_000 == 0)
-                Console.WriteLine($"[B&B] Prozkoumáno uzlů: {_nodesExplored}");
+                Emit(new SolverEvent.InfoEvent($"Prozkoumáno {_nodesExplored} uzlů"));
 
             if (_timeLimitExceeded)
                 return;
@@ -183,9 +188,9 @@ namespace Diplomka.Solver
             {
                 if (costSoFar < _bestCost)
                 {
+                    Emit(new SolverEvent.ImprovementEvent(_bestCost, costSoFar));
                     _bestCost = costSoFar;
                     _bestState = (State)state.Clone();
-                    Console.WriteLine($"[B&B] Nové optimum: {_bestCost:F2}");
                 }
                 return;
             }

@@ -5,7 +5,7 @@ namespace Diplomka.Solver
     /// <summary>
     /// Opravný algoritmus sloužící ke snaze opravit nevhodná (unfeasable) řešení obsahující nezaplněné sloty
     /// </summary>
-    public class RepairHeuristic
+    public class SolverRepair : SolverBase
     {
         private readonly List<Referee> _referees;
 
@@ -13,7 +13,7 @@ namespace Diplomka.Solver
         private readonly CostCalculator _costCalculator;
         private readonly SolverConfiguration _config;
 
-        public RepairHeuristic(
+        public SolverRepair(
             IEnumerable<Referee> referees,
             ConflictChecker conflictChecker,
             CostCalculator costCalculator,
@@ -26,6 +26,15 @@ namespace Diplomka.Solver
             _config = config;
         }
 
+        // TODO: Nevim jestli to neni blbost ale musi to implementovat rozhrani no...
+        public override State Solve(IEnumerable<Slot> slots)
+        {
+            var state = new State();
+            foreach (var slot in slots)
+                state.AddSlot(slot);
+            return Solve(state);    
+        }
+
         /// <summary>
         /// Hlavní opravná metoda.
         /// Iteruje podle stanoveného početu pokusů <see cref="SolverConfiguration.MaxRepairPasses"/> kde v každém zkouší opravu dokud
@@ -33,18 +42,19 @@ namespace Diplomka.Solver
         /// </summary>
         /// <param name="state">Stav pro opravu</param>
         /// <returns>V případě úspěchu je vrácen opravený stav</returns>
-        public State Repair(State state)
+        override public State Solve(State state)
         {
+            Emit(new SolverEvent.StartEvent());
             var current = (State)state.Clone();
 
             // Opravne pokusy
             for (int pass = 0; pass < _config.MaxRepairPasses; pass++)
             {
-                Console.WriteLine($"[Repair] Oprava {pass}");
+                Emit(new SolverEvent.InfoEvent { Message = $"Oprava {pass}" });
                 var emptySlots = GetEmptySlotsOrdered(current);
                 if (emptySlots.Count == 0)
                 {
-                    Console.WriteLine($"[Repair] Oprava se podařila");
+                    Emit(new SolverEvent.InfoEvent { Message = $"Oprava se podařila" });
                     break;
                 }
 
@@ -52,6 +62,7 @@ namespace Diplomka.Solver
                     TryRepairSlot(current, slot); // Pokus o opravu
             }
 
+            Emit(new SolverEvent.FinishEvent(_costCalculator.TotalCost(current)));
             return current;
         }
 
